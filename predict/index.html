@@ -331,8 +331,8 @@ function setLang(l){
   document.getElementById('bEs').classList.toggle('on',l==='es');
   document.getElementById('bEn').classList.toggle('on',l==='en');
   try{ss('oti-lang',l);}catch(e){}
-  checkAdminURL();
   renderAll();
+  checkAdminURL();
 }
 try{const s=gs('oti-lang');if(s)setLang(s);}catch(e){}
 
@@ -340,10 +340,14 @@ try{const s=gs('oti-lang');if(s)setLang(s);}catch(e){}
 function checkAdminURL(){
   const params=new URLSearchParams(window.location.search);
   const btn=document.getElementById('adminBtn');
-  if(btn){ if(params.get('admin')==='MikayOsa') btn.classList.add('visible'); else btn.classList.remove('visible'); }
+  if(btn){
+    if(params.get('admin')==='MikayOsa'){
+      btn.classList.add('visible');
+    } else {
+      btn.classList.remove('visible');
+    }
+  }
 }
-window.addEventListener('DOMContentLoaded', checkAdminURL);
-checkAdminURL();
 
 /* ═══ HELPERS ═══ */
 const CI={btc:'💰',project:'⚡',market:'📈',solana:'🟣',other:'🔮'};
@@ -537,4 +541,4 @@ function renderW(){
     else if(iC){rl=isEs()?'Correcto':'Correct';rc='near';}
     else{rl='LOSS';rc='loss';}
     const row=document.createElement('div');row.className='hist-row';
-    row.innerHTML=`<div class="hist-q" style="flex:1"><div>${isEs()?pred.q:pred.qe}</div><div class="hist-meta">${isEs()?'Voto':'Vote'}: <b style="color:var(--cream)">${v.choice}</b>${pred.status==='res
+    row.innerHTML=`<div class="hist-q" style="flex:1"><div>${isEs()?pred.q:pred.qe}</div><div class="hist-meta">${isEs()?'Voto':'Vote'}: <b style="color:var(--cream)">${v.choice}</b>${pred.status==='resolved'?' · '+(isEs()?'Resp':'Ans')+': <b sty
