@@ -218,23 +218,114 @@ textarea.finput{resize:vertical;min-height:60px}
   <button class="ni" onclick="goTo('rank',this)"><span class="ni-icon">🏆</span><span class="ni-label">Ranking</span></button>
 </nav>
 <script>
-const K={pass:'oti_pass',preds:'oti_preds',votes:'oti_votes',wallet:'oti_wallet',alias:'oti_alias',lb:'oti_lb'};
-const CI={btc:'💰',project:'⚡',market:'📈',solana:'🟣',other:'🔮'};
-const MD=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+/* ═══════════════════════════════════════
+   JSONBIN CLOUD CONFIG
+   ═══════════════════════════════════════ */
+const JBIN_KEY = '$2a$10$LmfpYN2USJwEB5wOLTP.2.hGauJIPlT5VpGB4EYRMxfY9pKhh3bMO';
+const JBIN_URL = 'https://api.jsonbin.io/v3/b';
+let JBIN_ID = null; // Se carga o crea automáticamente
+
+/* Estado global en memoria */
+let STATE = { preds: [], votes: {}, lb: {} };
+let loading = false;
+
+/* ═══ JSONBIN API ═══ */
+async function jbGet() {
+  if (!JBIN_ID) return null;
+  try {
+    const r = await fetch(`${JBIN_URL}/${JBIN_ID}/latest`, {
+      headers: { 'X-Master-Key': JBIN_KEY }
+    });
+    const d = await r.json();
+    return d.record || null;
+  } catch(e) { console.error('jbGet error', e); return null; }
+}
+
+async function jbSet(data) {
+  if (!JBIN_ID) return;
+  try {
+    await fetch(`${JBIN_URL}/${JBIN_ID}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JBIN_KEY },
+      body: JSON.stringify(data)
+    });
+  } catch(e) { console.error('jbSet error', e); }
+}
+
+async function jbCreate() {
+  try {
+    const r = await fetch(JBIN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JBIN_KEY, 'X-Bin-Name': 'OTIPredict', 'X-Bin-Private': 'false' },
+      body: JSON.stringify({ preds: [], votes: {}, lb: {} })
+    });
+    const d = await r.json();
+    return d.metadata?.id || null;
+  } catch(e) { console.error('jbCreate error', e); return null; }
+}
+
+async function jbFindBin() {
+  try {
+    const r = await fetch('https://api.jsonbin.io/v3/b?sortBy=createdAt&order=desc', {
+      headers: { 'X-Master-Key': JBIN_KEY }
+    });
+    const d = await r.json();
+    if (d && d.length > 0) return d[0].record?.id || d[0].metadata?.id || null;
+    return null;
+  } catch(e) { return null; }
+}
+
+/* Carga o crea el bin */
+async function initDB() {
+  showLoader(true);
+  /* Intenta recuperar el ID guardado localmente */
+  let id = localStorage.getItem('oti_bin_id');
+  if (!id) {
+    /* Busca bins existentes en la cuenta */
+    id = await jbFindBin();
+    if (!id) id = await jbCreate();
+    if (id) localStorage.setItem('oti_bin_id', id);
+  }
+  JBIN_ID = id;
+  await syncFromCloud();
+  showLoader(false);
+}
+
+async function syncFromCloud() {
+  const data = await jbGet();
+  if (data) {
+    STATE.preds = data.preds || [];
+    STATE.votes = data.votes || {};
+    STATE.lb    = data.lb    || {};
+  }
+  renderAll();
+  renderW();
+  checkNotif();
+}
+
+async function saveToCloud() {
+  await jbSet({ preds: STATE.preds, votes: STATE.votes, lb: STATE.lb });
+}
+
+function showLoader(on) {
+  let el = document.getElementById('globalLoader');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'globalLoader';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#F7C948,#E8641A);z-index:999;transition:opacity .3s';
+    document.body.appendChild(el);
+  }
+  el.style.opacity = on ? '1' : '0';
+}
+
+/* ═══ LOCAL (wallet/alias/lang/pass) ═══ */
 function gs(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function ss(k,v){try{localStorage.setItem(k,v);}catch(e){}}
-function gj(k,d){try{return JSON.parse(gs(k))||d;}catch(e){return d;}}
-function sj(k,v){ss(k,JSON.stringify(v));}
-function gPass(){return gs(K.pass)||'osatoshi2026';}
-function gPreds(){return gj(K.preds,[]);}
-function sPreds(p){sj(K.preds,p);}
-function gVotes(){return gj(K.votes,{});}
-function sVotes(v){sj(K.votes,v);}
-function gLB(){return gj(K.lb,{});}
-function sLB(l){sj(K.lb,l);}
-function mW(){return gs(K.wallet)||'';}
-function mA(){return gs(K.alias)||'';}
+function gPass(){return gs('oti_pass')||'osatoshi2026';}
+function mW(){return gs('oti_wallet')||'';}
+function mA(){return gs('oti_alias')||'';}
 function isEs(){return document.body.classList.contains('lang-es');}
+
 function setLang(l){
   document.body.className='lang-'+l;
   document.getElementById('bEs').classList.toggle('on',l==='es');
@@ -245,45 +336,48 @@ function setLang(l){
 }
 try{const s=gs('oti-lang');if(s)setLang(s);}catch(e){}
 
-/* SECRET ADMIN URL CHECK - solo por URL, sin sesión guardada */
+/* ═══ ADMIN URL ═══ */
 function checkAdminURL(){
   const params=new URLSearchParams(window.location.search);
-  const adminKey=params.get('admin');
   const btn=document.getElementById('adminBtn');
-  if(btn){
-    if(adminKey==='MikayOsa'){
-      btn.classList.add('visible');
-    } else {
-      btn.classList.remove('visible');
-    }
-  }
+  if(btn){ if(params.get('admin')==='MikayOsa') btn.classList.add('visible'); else btn.classList.remove('visible'); }
 }
 window.addEventListener('DOMContentLoaded', checkAdminURL);
 checkAdminURL();
 
-/* DUPLICATE VOTE CHECK */
-function hasVoted(predId){
-  const w=mW();if(!w)return false;
-  const votes=gVotes();
-  return votes[w]&&votes[w][predId]!==undefined;
+/* ═══ HELPERS ═══ */
+const CI={btc:'💰',project:'⚡',market:'📈',solana:'🟣',other:'🔮'};
+const MD=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+
+function showM(id){const m=document.getElementById(id);if(m){m.style.display='block';setTimeout(()=>m.style.display='none',2500);}}
+function hasVoted(predId){const w=mW();if(!w)return false;return STATE.votes[w]&&STATE.votes[w][predId]!==undefined;}
+function seedH(str){let h=0;for(let i=0;i<str.length;i++){h=(Math.imul(31,h)+str.charCodeAt(i))|0;}return Math.abs(h);}
+function drawW(wallets,count,seed){if(!wallets.length)return[];const sh=[...wallets];let s=seedH(seed+wallets.join('|'));for(let i=sh.length-1;i>0;i--){s=(s*1664525+1013904223)&0xffffffff;const j=Math.abs(s)%(i+1);[sh[i],sh[j]]=[sh[j],sh[i]];}return sh.slice(0,Math.min(count,sh.length));}
+function gSeed(pred){return pred.id+'|'+pred.dl+'|'+pred.winner;}
+
+/* ═══ NAVIGATION ═══ */
+function goTo(p,btn){
+  document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(x=>x.classList.remove('on'));
+  document.getElementById('pg-'+p).classList.add('on');
+  btn.classList.add('on');
+  document.getElementById('scrl').scrollTop=0;
+  if(p==='wallet') renderW();
+  if(p==='rank') renderLB();
 }
-function goTo(p,btn){document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.ni').forEach(x=>x.classList.remove('on'));document.getElementById('pg-'+p).classList.add('on');btn.classList.add('on');document.getElementById('scrl').scrollTop=0;if(p==='wallet')renderW();if(p==='rank')renderLB();}
+
+/* ═══ ADMIN ═══ */
 function openP(){document.getElementById('passOv').style.display='flex';document.getElementById('pInp').value='';document.getElementById('pErr').style.display='none';}
 function closeP(){document.getElementById('passOv').style.display='none';}
 function checkP(){const v=document.getElementById('pInp').value;if(v===gPass()){closeP();openAdmin();}else{document.getElementById('pErr').style.display='block';}}
 document.getElementById('pInp').addEventListener('keydown',e=>{if(e.key==='Enter')checkP();});
 function openAdmin(){document.getElementById('adminPnl').classList.add('on');renderAList();}
 function closeAdmin(){document.getElementById('adminPnl').classList.remove('on');}
-function logoutAdmin(){
-  closeAdmin();
-  window.location.href=window.location.pathname;
-}
-function changeP(){const v=document.getElementById('npInp').value.trim();if(!v)return;ss(K.pass,v);document.getElementById('npInp').value='';showM('pMsg');}
-function showM(id){const m=document.getElementById(id);m.style.display='block';setTimeout(()=>m.style.display='none',2500);}
-function seedH(str){let h=0;for(let i=0;i<str.length;i++){h=(Math.imul(31,h)+str.charCodeAt(i))|0;}return Math.abs(h);}
-function drawW(wallets,count,seed){if(!wallets.length)return[];const sh=[...wallets];let s=seedH(seed+wallets.join('|'));for(let i=sh.length-1;i>0;i--){s=(s*1664525+1013904223)&0xffffffff;const j=Math.abs(s)%(i+1);[sh[i],sh[j]]=[sh[j],sh[i]];}return sh.slice(0,Math.min(count,sh.length));}
-function gSeed(pred){return pred.id+'|'+pred.deadline+'|'+pred.winner;}
-function createPred(){
+function logoutAdmin(){closeAdmin();window.location.href=window.location.pathname;}
+function changeP(){const v=document.getElementById('npInp').value.trim();if(!v)return;ss('oti_pass',v);document.getElementById('npInp').value='';showM('pMsg');}
+
+/* ═══ CREATE PREDICTION ═══ */
+async function createPred(){
   const q=document.getElementById('fq').value.trim();
   const qe=document.getElementById('fqe').value.trim();
   const opts=[document.getElementById('o1').value.trim(),document.getElementById('o2').value.trim(),document.getElementById('o3').value.trim(),document.getElementById('o4').value.trim()].filter(Boolean);
@@ -295,33 +389,74 @@ function createPred(){
   if(!q||opts.length<2){alert(isEs()?'Completa la pregunta y al menos 2 opciones':'Fill in question and at least 2 options');return;}
   const pred={id:Date.now(),q,qe:qe||q,opts,dl,reward,wc,method,cat,status:'open',winner:null,winners:[],drawSeed:'',prizeEach:0,created:new Date().toISOString(),votes:{}};
   opts.forEach(o=>pred.votes[o]=0);
-  const preds=gPreds();preds.unshift(pred);sPreds(preds);
-  ['fq','fqe','o1','o2','o3','o4','fr','fw'].forEach(id=>document.getElementById(id).value='');
+  STATE.preds.unshift(pred);
+  showLoader(true);
+  await saveToCloud();
+  showLoader(false);
+  ['fq','fqe','o1','o2','o3','o4','fr','fw'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   showM('cMsg');renderAList();renderAll();
 }
-function resolvePred(id,winner){
-  const preds=gPreds();const pred=preds.find(p=>p.id===id);if(!pred)return;
+
+/* ═══ RESOLVE PREDICTION ═══ */
+async function resolvePred(id, winner){
+  const pred=STATE.preds.find(p=>p.id===id);if(!pred)return;
   pred.status='resolved';pred.winner=winner;
-  const seed=gSeed({...pred,winner});pred.drawSeed=seed;
-  const votes=gVotes();
-  const correct=Object.keys(votes).filter(w=>votes[w][id]&&votes[w][id].choice===winner);
+  const seed=gSeed(pred);pred.drawSeed=seed;
+  const correct=Object.keys(STATE.votes).filter(w=>STATE.votes[w][id]&&STATE.votes[w][id].choice===winner);
   let winners=[];
-  if(pred.method==='all')winners=correct;
-  else if(pred.method==='first')winners=correct.slice(0,pred.wc);
+  if(pred.method==='all') winners=correct;
+  else if(pred.method==='first') winners=correct.slice(0,pred.wc);
   else winners=drawW(correct,pred.wc,seed);
   pred.winners=winners;
   pred.prizeEach=winners.length>0?Math.floor(pred.reward/winners.length):0;
-  const lb=gLB();
-  correct.forEach(w=>{if(!lb[w])lb[w]={wins:0,total:0,oti:0,alias:''};lb[w].total++;lb[w].alias=votes[w][id].alias||lb[w].alias;});
-  winners.forEach(w=>{if(!lb[w])lb[w]={wins:0,total:0,oti:0,alias:''};lb[w].wins++;lb[w].oti+=pred.prizeEach;lb[w].alias=votes[w]&&votes[w][id]?votes[w][id].alias||lb[w].alias:lb[w].alias;});
-  Object.keys(votes).forEach(w=>{if(votes[w][id]&&!correct.includes(w)){if(!lb[w])lb[w]={wins:0,total:0,oti:0,alias:''};lb[w].total++;}});
-  sPreds(preds);sLB(lb);renderAList();renderAll();checkNotif();
+  correct.forEach(w=>{if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:''};STATE.lb[w].total++;STATE.lb[w].alias=STATE.votes[w][id].alias||STATE.lb[w].alias;});
+  winners.forEach(w=>{if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:''};STATE.lb[w].wins++;STATE.lb[w].oti+=pred.prizeEach;STATE.lb[w].alias=STATE.votes[w]&&STATE.votes[w][id]?STATE.votes[w][id].alias||STATE.lb[w].alias:STATE.lb[w].alias;});
+  Object.keys(STATE.votes).forEach(w=>{if(STATE.votes[w][id]&&!correct.includes(w)){if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:''};STATE.lb[w].total++;}});
+  showLoader(true);
+  await saveToCloud();
+  showLoader(false);
+  renderAList();renderAll();checkNotif();
 }
-function deletePred(id){if(!confirm(isEs()?'¿Eliminar?':'Delete?'))return;sPreds(gPreds().filter(p=>p.id!==id));renderAList();renderAll();}
-function checkNotif(){const w=mW();if(!w)return;const won=gPreds().filter(p=>p.status==='resolved'&&p.winners.includes(w));const bar=document.getElementById('nBar');if(won.length){bar.style.display='block';bar.textContent=isEs()?'🎉 ¡Ganaste en '+won.length+' pronóstico(s)! Revisa tu historial en Billetera.':'🎉 You won in '+won.length+' prediction(s)! Check your Wallet history.';}else bar.style.display='none';}
+
+async function deletePred(id){
+  if(!confirm(isEs()?'¿Eliminar?':'Delete?'))return;
+  STATE.preds=STATE.preds.filter(p=>p.id!==id);
+  showLoader(true);
+  await saveToCloud();
+  showLoader(false);
+  renderAList();renderAll();
+}
+
+/* ═══ VOTE ═══ */
+async function submitV(id){
+  const c=selO[id];if(!c)return;
+  const w=mW();
+  if(!w){alert(isEs()?'Conecta tu billetera primero en la pestaña Billetera':'Connect your wallet first in the Wallet tab');return;}
+  if(hasVoted(id)){alert(isEs()?'Ya participaste en este pronóstico.':'You already participated in this prediction.');return;}
+  const pred=STATE.preds.find(p=>p.id===id);if(!pred||pred.status!=='open')return;
+  const now=new Date();if(pred.dl&&new Date(pred.dl)<now){alert(isEs()?'Este pronóstico ya cerró.':'This prediction is already closed.');return;}
+  pred.votes[c]=(pred.votes[c]||0)+1;
+  if(!STATE.votes[w])STATE.votes[w]={};
+  STATE.votes[w][id]={choice:c,alias:mA(),ts:new Date().toISOString()};
+  showLoader(true);
+  await saveToCloud();
+  showLoader(false);
+  renderAll();
+}
+
+/* ═══ NOTIFICATIONS ═══ */
+function checkNotif(){
+  const w=mW();if(!w)return;
+  const won=STATE.preds.filter(p=>p.status==='resolved'&&p.winners&&p.winners.includes(w));
+  const bar=document.getElementById('nBar');
+  if(won.length){bar.style.display='block';bar.textContent=isEs()?'🎉 ¡Ganaste en '+won.length+' pronóstico(s)! Revisa tu historial en Billetera.':'🎉 You won in '+won.length+' prediction(s)! Check your Wallet history.';}
+  else bar.style.display='none';
+}
+
+/* ═══ RENDER PREDICTION CARD ═══ */
 const selO={};
-function renderPCard(pred,container){
-  const votes=gVotes();const w=mW();const myV=w&&votes[w]?votes[w][pred.id]:null;
+function renderPCard(pred, container){
+  const w=mW();const myV=w&&STATE.votes[w]?STATE.votes[w][pred.id]:null;
   const now=new Date();const dlP=pred.dl&&new Date(pred.dl)<now;
   const isOpen=pred.status==='open'&&!dlP;
   const total=Object.values(pred.votes).reduce((a,b)=>a+b,0);
@@ -339,61 +474,61 @@ function renderPCard(pred,container){
   });
   let wHTML='';
   if(pred.status==='resolved'&&pred.winners&&pred.winners.length>0){
-    const lb=gLB();const pe=pred.prizeEach||0;
-    const rows=pred.winners.map((wa,i)=>{const d=lb[wa];const name=d&&d.alias?d.alias:wa.slice(0,8)+'...'+wa.slice(-6);const isMe=w&&wa===w;return`<div class="winner-row"><div class="wmedal">${MD[i]||'🏅'}</div><div class="waddr">${name}${isMe?'<span class="wyou">'+(isEs()?'(Tú)':'(You)')+'</span>':''}</div><div class="wprize">${pe.toLocaleString()} $OTI</div></div>`;}).join('');
+    const pe=pred.prizeEach||0;
+    const rows=pred.winners.map((wa,i)=>{const d=STATE.lb[wa];const name=d&&d.alias?d.alias:wa.slice(0,8)+'...'+wa.slice(-6);const isMe=w&&wa===w;return`<div class="winner-row"><div class="wmedal">${MD[i]||'🏅'}</div><div class="waddr">${name}${isMe?'<span class="wyou">'+(isEs()?'(Tú)':'(You)')+'</span>':''}</div><div class="wprize">${pe.toLocaleString()} $OTI</div></div>`;}).join('');
     const mLabel=pred.method==='all'?(isEs()?'Todos los aciertos':'All correct'):pred.method==='first'?(isEs()?'Primeros votantes':'First voters'):(isEs()?'Sorteo aleatorio':'Random draw');
-    wHTML=`<div class="winners-box"><div class="winners-title">🏆 ${isEs()?'Ganadores':'Winners'} · ${pred.winners.length} ${isEs()?'seleccionados de':'selected from'} ${total} ${isEs()?'participantes':'participants'}</div>${rows}<div class="draw-box"><div class="draw-title">🔒 ${isEs()?'Método':'Method'}: ${mLabel} · ${isEs()?'Premio por ganador':'Per winner'}: ${pe.toLocaleString()} $OTI</div><div class="draw-seed">${isEs()?'Semilla':'Seed'}: ${pred.drawSeed||gSeed(pred)}</div><div class="draw-info">${isEs()?'Algoritmo determinista — reproducible y verificable públicamente':'Deterministic algorithm — publicly reproducible and verifiable'}</div></div></div>`;
+    wHTML=`<div class="winners-box"><div class="winners-title">🏆 ${isEs()?'Ganadores':'Winners'} · ${pred.winners.length} ${isEs()?'seleccionados de':'selected from'} ${total} ${isEs()?'participantes':'participants'}</div>${rows}<div class="draw-box"><div class="draw-title">🔒 ${isEs()?'Método':'Method'}: ${mLabel} · ${isEs()?'Premio por ganador':'Per winner'}: ${pe.toLocaleString()} $OTI</div><div class="draw-seed">${isEs()?'Semilla':'Seed'}: ${pred.drawSeed||gSeed(pred)}</div><div class="draw-info">${isEs()?'Algoritmo determinista — reproducible y verificable':'Deterministic algorithm — publicly verifiable'}</div></div></div>`;
   }
   const amW=pred.status==='resolved'&&w&&pred.winners&&pred.winners.includes(w);
   const amC=pred.status==='resolved'&&myV&&myV.choice===pred.winner;
   let botH='';
-  if(isOpen&&!myV)botH=`<button class="pred-sub" id="sub${pred.id}" onclick="submitV(${pred.id})" disabled>${isEs()?'Confirmar pronóstico':'Confirm prediction'}</button>`;
-  else if(myV&&isOpen)botH=`<div class="pred-voted">✓ ${isEs()?'Tu pronóstico':'Your prediction'}: ${myV.choice}</div>`;
-  else if(amW)botH=`<div style="margin-top:.75rem;padding:.75rem;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);font-size:.72rem;color:var(--green);text-align:center;line-height:1.6">🎉 ${isEs()?'¡Ganaste '+pred.prizeEach.toLocaleString()+' $OTI!':'You won '+pred.prizeEach.toLocaleString()+' $OTI!'} ${isEs()?'El admin los enviará a tu billetera.':'The admin will send them to your wallet.'}</div>`;
-  else if(amC&&!amW)botH=`<div style="margin-top:.75rem;padding:.75rem;background:rgba(247,201,72,.05);border:1px solid rgba(247,201,72,.1);font-size:.68rem;color:var(--muted);text-align:center;line-height:1.6">${isEs()?'Acertaste pero no saliste en el sorteo esta vez. ¡Sigue participando!':'You were right but not selected this time. Keep participating!'}</div>`;
+  if(isOpen&&!myV) botH=`<button class="pred-sub" id="sub${pred.id}" onclick="submitV(${pred.id})" disabled>${isEs()?'Confirmar pronóstico':'Confirm prediction'}</button>`;
+  else if(myV&&isOpen) botH=`<div class="pred-voted">✓ ${isEs()?'Tu pronóstico':'Your prediction'}: ${myV.choice}</div>`;
+  else if(amW) botH=`<div style="margin-top:.75rem;padding:.75rem;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);font-size:.72rem;color:var(--green);text-align:center;line-height:1.6">🎉 ${isEs()?'¡Ganaste '+(pred.prizeEach||0).toLocaleString()+' $OTI! El admin los enviará a tu billetera.':'You won '+(pred.prizeEach||0).toLocaleString()+' $OTI! The admin will send them to your wallet.'}</div>`;
+  else if(amC&&!amW) botH=`<div style="margin-top:.75rem;padding:.75rem;background:rgba(247,201,72,.05);border:1px solid rgba(247,201,72,.1);font-size:.68rem;color:var(--muted);text-align:center;line-height:1.6">${isEs()?'Acertaste pero no saliste en el sorteo esta vez. ¡Sigue participando!':'You were right but not selected this time. Keep participating!'}</div>`;
   const div=document.createElement('div');div.className='pred-card';
   div.innerHTML=`<div class="psbar ${sc}"></div><div class="pred-inner"><div class="pred-meta"><span class="pbadge ${sc}">${bt}</span><span class="pred-reward"><b>${pred.reward.toLocaleString()}</b> $OTI</span><span class="pred-winfo">👥 ${pred.wc} ${isEs()?'ganadores':'winners'}</span></div><div class="pred-q">${CI[pred.cat]||'🔮'} ${q}</div>${dlS?`<div class="pred-dl">⏰ ${isEs()?'Cierra':'Closes'}: ${dlS}</div>`:''}${tLeft?`<div class="pred-cd">⏱ ${isEs()?'Tiempo restante':'Time left'}: ${tLeft}</div>`:''}  <div class="opts-grid">${opH}</div>${botH}${wHTML}</div>`;
   container.appendChild(div);
 }
+
 function selOpt(id,opt,btn){selO[id]=opt;btn.closest('.opts-grid').querySelectorAll('.opt-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');const s=document.getElementById('sub'+id);if(s)s.disabled=false;}
-function submitV(id){
-  const c=selO[id];if(!c)return;
-  const w=mW();if(!w){alert(isEs()?'Conecta tu billetera primero en la pestaña Billetera':'Connect your wallet first in the Wallet tab');return;}
-  if(hasVoted(id)){alert(isEs()?'Ya participaste en este pronóstico.':'You already participated in this prediction.');return;}
-  const preds=gPreds();const pred=preds.find(p=>p.id===id);if(!pred||pred.status!=='open')return;
-  const now=new Date();if(pred.dl&&new Date(pred.dl)<now){alert(isEs()?'Este pronóstico ya cerró.':'This prediction is already closed.');return;}
-  pred.votes[c]=(pred.votes[c]||0)+1;sPreds(preds);
-  const votes=gVotes();if(!votes[w])votes[w]={};
-  if(votes[w][id]!==undefined){alert(isEs()?'Ya participaste en este pronóstico.':'You already participated in this prediction.');return;}
-  votes[w][id]={choice:c,alias:mA(),ts:new Date().toISOString()};sVotes(votes);renderAll();
-}
+
+/* ═══ RENDER ALL ═══ */
 function renderAll(){
-  const preds=gPreds();const open=preds.filter(p=>p.status==='open');const res=preds.filter(p=>p.status==='resolved').slice(0,5);
-  const totalOTI=open.reduce((a,p)=>a+p.reward,0);const votes=gVotes();
+  const open=STATE.preds.filter(p=>p.status==='open');
+  const res=STATE.preds.filter(p=>p.status==='resolved').slice(0,5);
+  const totalOTI=open.reduce((a,p)=>a+p.reward,0);
   document.getElementById('sOpen').textContent=open.length;
   document.getElementById('sOti').textContent=totalOTI.toLocaleString();
-  document.getElementById('sUsers').textContent=Object.keys(votes).length;
-  document.getElementById('sRes').textContent=preds.filter(p=>p.status==='resolved').length;
+  document.getElementById('sUsers').textContent=Object.keys(STATE.votes).length;
+  document.getElementById('sRes').textContent=STATE.preds.filter(p=>p.status==='resolved').length;
   const oc=document.getElementById('oPreds');oc.innerHTML='';open.forEach(p=>renderPCard(p,oc));
   const rc=document.getElementById('rPreds');rc.innerHTML='';res.forEach(p=>renderPCard(p,rc));
   document.getElementById('rSection').style.display=res.length?'block':'none';
   document.getElementById('emptyS').style.display=open.length?'none':'block';
   checkNotif();
 }
-function saveW(){const addr=document.getElementById('wInp').value.trim();const alias=document.getElementById('aInp').value.trim();if(!addr||addr.length<20){alert(isEs()?'Dirección Solana inválida (mín 20 caracteres)':'Invalid Solana address (min 20 chars)');return;}ss(K.wallet,addr);ss(K.alias,alias);renderW();}
-function disconnW(){localStorage.removeItem(K.wallet);localStorage.removeItem(K.alias);renderW();}
+
+/* ═══ WALLET ═══ */
+function saveW(){
+  const addr=document.getElementById('wInp').value.trim();
+  const alias=document.getElementById('aInp').value.trim();
+  if(!addr||addr.length<20){alert(isEs()?'Dirección Solana inválida (mín 20 caracteres)':'Invalid Solana address (min 20 chars)');return;}
+  ss('oti_wallet',addr);ss('oti_alias',alias);renderW();
+}
+function disconnW(){localStorage.removeItem('oti_wallet');localStorage.removeItem('oti_alias');renderW();}
 function renderW(){
   const addr=mW();const alias=mA();
   document.getElementById('wConn').style.display=addr?'block':'none';
   document.getElementById('wForm').style.display=addr?'none':'block';
-  if(addr)document.getElementById('wAddr').textContent=(alias?alias+' — ':'')+addr.slice(0,10)+'...'+addr.slice(-6);
-  const votes=gVotes();const preds=gPreds();const myV=addr&&votes[addr]?votes[addr]:{};
+  if(addr) document.getElementById('wAddr').textContent=(alias?alias+' — ':'')+addr.slice(0,10)+'...'+addr.slice(-6);
+  const myV=addr&&STATE.votes[addr]?STATE.votes[addr]:{};
   const h=document.getElementById('myH');const e=document.getElementById('myE');
   const entries=Object.keys(myV).reverse();
   if(!entries.length){h.innerHTML='';e.style.display='block';return;}
   e.style.display='none';h.innerHTML='';
   entries.forEach(pid=>{
-    const v=myV[pid];const pred=preds.find(p=>p.id==pid);if(!pred)return;
+    const v=myV[pid];const pred=STATE.preds.find(p=>p.id==pid);if(!pred)return;
     const iW=pred.status==='resolved'&&pred.winners&&pred.winners.includes(addr);
     const iC=pred.status==='resolved'&&pred.winner===v.choice;
     let rl,rc;
@@ -402,39 +537,4 @@ function renderW(){
     else if(iC){rl=isEs()?'Correcto':'Correct';rc='near';}
     else{rl='LOSS';rc='loss';}
     const row=document.createElement('div');row.className='hist-row';
-    row.innerHTML=`<div class="hist-q" style="flex:1"><div>${isEs()?pred.q:pred.qe}</div><div class="hist-meta">${isEs()?'Voto':'Vote'}: <b style="color:var(--cream)">${v.choice}</b>${pred.status==='resolved'?' · '+(isEs()?'Resp':'Ans')+': <b style="color:var(--gold)">'+pred.winner+'</b>':''}</div></div><div class="hresult ${rc}">${rl}</div>`;
-    h.appendChild(row);
-  });
-}
-function renderLB(){
-  const lb=gLB();const w=mW();const c=document.getElementById('lbL');
-  const ent=Object.entries(lb).sort((a,b)=>b[1].oti-a[1].oti).slice(0,20);
-  if(!ent.length){c.innerHTML=`<div class="empty-state" style="padding:1.5rem">${isEs()?'Ranking disponible al resolver los primeros pronósticos.':'Ranking available after first predictions are resolved.'}</div>`;return;}
-  c.innerHTML='';
-  ent.forEach(([wallet,d],i)=>{
-    const isMe=w&&wallet===w;const name=d.alias||(wallet.slice(0,6)+'...'+wallet.slice(-4));
-    const row=document.createElement('div');row.className='lb-row';
-    row.innerHTML=`<div class="lb-rank ${i<3?'top':''}">${MD[i]||i+1}</div><div class="lb-info"><div class="lb-name">${name}${isMe?'<span style="font-size:9px;color:var(--green);margin-left:5px">'+(isEs()?'(Tú)':'(You)')+'</span>':''}</div><div class="lb-stats">${d.wins} ${isEs()?'ganados':'wins'} · ${d.total} ${isEs()?'participaciones':'entries'}</div></div><div class="lb-oti">${d.oti.toLocaleString()} $OTI</div>`;
-    c.appendChild(row);
-  });
-}
-function renderAList(){
-  const c=document.getElementById('aPredList');const preds=gPreds();
-  if(!preds.length){c.innerHTML=`<div style="font-size:.72rem;color:var(--muted);text-align:center;padding:1rem">${isEs()?'No hay pronósticos aún':'No predictions yet'}</div>`;return;}
-  c.innerHTML='';
-  preds.forEach(p=>{
-    const tv=Object.values(p.votes).reduce((a,b)=>a+b,0);
-    const div=document.createElement('div');div.className='pmr';
-    const acts=p.status==='open'
-      ?`<select class="pmr-sel" id="rs${p.id}">${p.opts.map(o=>`<option value="${o}">${o}</option>`).join('')}</select><button class="pmr-btn res" onclick="resolvePred(${p.id},document.getElementById('rs${p.id}').value)">${isEs()?'Resolver':'Resolve'}</button>`
-      :`<span style="font-size:.62rem;color:var(--green)">✓ ${isEs()?'Ganó':'Winner'}: ${p.winner} · ${p.winners.length} ${isEs()?'ganadores':'winners'}</span>`;
-    div.innerHTML=`<div class="pmr-q">${p.q}</div><div class="pmr-meta">${p.opts.join(' · ')} | ${p.reward.toLocaleString()} $OTI | ${p.wc} ${isEs()?'ganadores':'winners'} | ${isEs()?'Método':'Method'}: ${p.method} | ${tv} ${isEs()?'votos':'votes'}</div><div class="pmr-acts">${acts}<button class="pmr-btn del" onclick="deletePred(${p.id})">${isEs()?'Eliminar':'Delete'}</button></div>`;
-    c.appendChild(div);
-  });
-}
-renderAll();renderW();
-try{const dl=document.getElementById('fd');if(dl){const d=new Date();d.setDate(d.getDate()+7);dl.value=d.toISOString().slice(0,16);}}catch(e){}
-setInterval(()=>{if(gPreds().some(p=>p.status==='open'&&p.dl&&new Date(p.dl)<new Date()))renderAll();},30000);
-</script>
-</body>
-</html>
+    row.innerHTML=`<div class="hist-q" style="flex:1"><div>${isEs()?pred.q:pred.qe}</div><div class="hist-meta">${isEs()?'Voto':'Vote'}: <b style="color:var(--cream)">${v.choice}</b>${pred.status==='res
