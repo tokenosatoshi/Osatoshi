@@ -242,21 +242,31 @@ async function jbGet() {
   if (!JBIN_ID) return null;
   try {
     const r = await fetch(`${JBIN_URL}/${JBIN_ID}/latest`, {
-      headers: { 'X-Master-Key': JBIN_KEY }
+      method: 'GET',
+      headers: {
+        'X-Master-Key': JBIN_KEY,
+        'X-Bin-Meta': 'false'
+      }
     });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
-    return d.record || null;
+    return d.record || d || null;
   } catch(e) { console.error('jbGet error', e); return null; }
 }
 
 async function jbSet(data) {
   if (!JBIN_ID) return;
   try {
-    await fetch(`${JBIN_URL}/${JBIN_ID}`, {
+    const r = await fetch(`${JBIN_URL}/${JBIN_ID}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JBIN_KEY },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': JBIN_KEY,
+        'X-Bin-Meta': 'false'
+      },
       body: JSON.stringify(data)
     });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
   } catch(e) { console.error('jbSet error', e); }
 }
 
