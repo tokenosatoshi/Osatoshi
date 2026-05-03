@@ -231,7 +231,7 @@ textarea.finput{resize:vertical;min-height:60px}
    ═══════════════════════════════════════ */
 const JBIN_KEY = '$2a$10$LmfpYN2USJwEB5wOLTP.2.hGauJIPlT5VpGB4EYRMxfY9pKhh3bMO';
 const JBIN_URL = 'https://api.jsonbin.io/v3/b';
-let JBIN_ID = null; // Se carga o crea automáticamente
+let JBIN_ID = '69f7d87faaba882197699df8'; // ID fijo
 
 /* Estado global en memoria */
 let STATE = { preds: [], votes: {}, lb: {} };
@@ -283,18 +283,9 @@ async function jbFindBin() {
   } catch(e) { return null; }
 }
 
-/* Carga o crea el bin */
+/* Conecta directo al bin fijo */
 async function initDB() {
   showLoader(true);
-  /* Intenta recuperar el ID guardado localmente */
-  let id = localStorage.getItem('oti_bin_id');
-  if (!id) {
-    /* Busca bins existentes en la cuenta */
-    id = await jbFindBin();
-    if (!id) id = await jbCreate();
-    if (id) localStorage.setItem('oti_bin_id', id);
-  }
-  JBIN_ID = id;
   await syncFromCloud();
   showLoader(false);
 }
