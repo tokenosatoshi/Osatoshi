@@ -235,17 +235,30 @@ function sLB(l){sj(K.lb,l);}
 function mW(){return gs(K.wallet)||'';}
 function mA(){return gs(K.alias)||'';}
 function isEs(){return document.body.classList.contains('lang-es');}
-function setLang(l){document.body.className='lang-'+l;document.getElementById('bEs').classList.toggle('on',l==='es');document.getElementById('bEn').classList.toggle('on',l==='en');try{ss('oti-lang',l);}catch(e){}renderAll();}
+function setLang(l){
+  document.body.className='lang-'+l;
+  document.getElementById('bEs').classList.toggle('on',l==='es');
+  document.getElementById('bEn').classList.toggle('on',l==='en');
+  try{ss('oti-lang',l);}catch(e){}
+  checkAdminURL();
+  renderAll();
+}
 try{const s=gs('oti-lang');if(s)setLang(s);}catch(e){}
 
 /* SECRET ADMIN URL CHECK - solo por URL, sin sesión guardada */
 function checkAdminURL(){
   const params=new URLSearchParams(window.location.search);
   const adminKey=params.get('admin');
-  if(adminKey==='MikayOsa'){
-    document.getElementById('adminBtn').classList.add('visible');
+  const btn=document.getElementById('adminBtn');
+  if(btn){
+    if(adminKey==='MikayOsa'){
+      btn.classList.add('visible');
+    } else {
+      btn.classList.remove('visible');
+    }
   }
 }
+window.addEventListener('DOMContentLoaded', checkAdminURL);
 checkAdminURL();
 
 /* DUPLICATE VOTE CHECK */
@@ -414,4 +427,14 @@ function renderAList(){
     const div=document.createElement('div');div.className='pmr';
     const acts=p.status==='open'
       ?`<select class="pmr-sel" id="rs${p.id}">${p.opts.map(o=>`<option value="${o}">${o}</option>`).join('')}</select><button class="pmr-btn res" onclick="resolvePred(${p.id},document.getElementById('rs${p.id}').value)">${isEs()?'Resolver':'Resolve'}</button>`
-      :`<span style="font-size:.62rem;color:var(--green)">✓ ${isEs()?'Ganó':'Winner'}: ${p.win
+      :`<span style="font-size:.62rem;color:var(--green)">✓ ${isEs()?'Ganó':'Winner'}: ${p.winner} · ${p.winners.length} ${isEs()?'ganadores':'winners'}</span>`;
+    div.innerHTML=`<div class="pmr-q">${p.q}</div><div class="pmr-meta">${p.opts.join(' · ')} | ${p.reward.toLocaleString()} $OTI | ${p.wc} ${isEs()?'ganadores':'winners'} | ${isEs()?'Método':'Method'}: ${p.method} | ${tv} ${isEs()?'votos':'votes'}</div><div class="pmr-acts">${acts}<button class="pmr-btn del" onclick="deletePred(${p.id})">${isEs()?'Eliminar':'Delete'}</button></div>`;
+    c.appendChild(div);
+  });
+}
+renderAll();renderW();
+try{const dl=document.getElementById('fd');if(dl){const d=new Date();d.setDate(d.getDate()+7);dl.value=d.toISOString().slice(0,16);}}catch(e){}
+setInterval(()=>{if(gPreds().some(p=>p.status==='open'&&p.dl&&new Date(p.dl)<new Date()))renderAll();},30000);
+</script>
+</body>
+</html>
