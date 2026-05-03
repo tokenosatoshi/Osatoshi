@@ -12,14 +12,22 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--dark);color:var(--cream);font-family:'Space Mono',monospace;overflow:hidden}
 body{display:flex;flex-direction:column;max-width:430px;margin:0 auto}
-.t{display:none}body.lang-es .t-es{display:revert}body.lang-en .t-en{display:revert}
-span.t{display:none}body.lang-es span.t-es{display:inline}body.lang-en span.t-en{display:inline}
+.t{display:none !important}
+body.lang-es .t-es{display:revert !important}
+body.lang-en .t-en{display:revert !important}
+span.t{display:none !important}
+body.lang-es span.t-es{display:inline !important}
+body.lang-en span.t-en{display:inline !important}
+p.t{display:none !important}
+body.lang-es p.t-es{display:block !important}
+body.lang-en p.t-en{display:block !important}
+div.t{display:none !important}
+body.lang-es div.t-es{display:block !important}
+body.lang-en div.t-en{display:block !important}
 .hdr{padding:calc(var(--st)+10px) 1.1rem 10px;background:rgba(10,10,8,.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50}
 .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:var(--gold);letter-spacing:-.02em}.logo span{color:var(--cream)}
 .hdr-right{display:flex;align-items:center;gap:7px}
 .lang-sw{display:flex;border:1px solid var(--border)}.lbtn{background:none;border:none;padding:3px 9px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;letter-spacing:.08em}.lbtn.on{background:var(--gold);color:var(--dark)}
-.admin-btn{display:none;background:none;border:1px solid rgba(247,201,72,.3);color:var(--gold);padding:3px 9px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-family:'Space Mono',monospace}
-.admin-btn.visible{display:block}
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(68px + var(--sb))}.scroll::-webkit-scrollbar{display:none}
 .pg{display:none;padding:1.1rem;animation:fu .25s ease}.pg.on{display:block}
 @keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -156,7 +164,7 @@ textarea.finput{resize:vertical;min-height:60px}
   <div class="logo">OTI<span>Predict</span></div>
   <div class="hdr-right">
     <div class="lang-sw"><button class="lbtn on" id="bEs" onclick="setLang('es')">ES</button><button class="lbtn" id="bEn" onclick="setLang('en')">EN</button></div>
-    <button class="admin-btn" id="adminBtn" onclick="openP()">Admin</button>
+    <button style="display:none;background:none;border:1px solid rgba(247,201,72,.3);color:var(--gold);padding:3px 9px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-family:'Space Mono',monospace" id="adminBtn" onclick="openP()">Admin</button>
   </div>
 </div>
 <div class="scroll" id="scrl">
@@ -340,12 +348,11 @@ try{const s=gs('oti-lang');if(s)setLang(s);}catch(e){}
 function checkAdminURL(){
   const params=new URLSearchParams(window.location.search);
   const btn=document.getElementById('adminBtn');
-  if(btn){
-    if(params.get('admin')==='MikayOsa'){
-      btn.classList.add('visible');
-    } else {
-      btn.classList.remove('visible');
-    }
+  if(!btn) return;
+  if(params.get('admin')==='MikayOsa'){
+    btn.style.display='block';
+  } else {
+    btn.style.display='none';
   }
 }
 
@@ -541,4 +548,52 @@ function renderW(){
     else if(iC){rl=isEs()?'Correcto':'Correct';rc='near';}
     else{rl='LOSS';rc='loss';}
     const row=document.createElement('div');row.className='hist-row';
-    row.innerHTML=`<div class="hist-q" style="flex:1"><div>${isEs()?pred.q:pred.qe}</div><div class="hist-meta">${isEs()?'Voto':'Vote'}: <b style="color:var(--cream)">${v.choice}</b>${pred.status==='resolved'?' · '+(isEs()?'Resp':'Ans')+': <b sty
+    row.innerHTML=`<div class="hist-q" style="flex:1"><div>${isEs()?pred.q:pred.qe}</div><div class="hist-meta">${isEs()?'Voto':'Vote'}: <b style="color:var(--cream)">${v.choice}</b>${pred.status==='resolved'?' · '+(isEs()?'Resp':'Ans')+': <b style="color:var(--gold)">'+pred.winner+'</b>':''}</div></div><div class="hresult ${rc}">${rl}</div>`;
+    h.appendChild(row);
+  });
+}
+
+/* ═══ LEADERBOARD ═══ */
+function renderLB(){
+  const w=mW();const c=document.getElementById('lbL');
+  const ent=Object.entries(STATE.lb).sort((a,b)=>b[1].oti-a[1].oti).slice(0,20);
+  if(!ent.length){c.innerHTML=`<div class="empty-state" style="padding:1.5rem">${isEs()?'Ranking disponible al resolver los primeros pronósticos.':'Ranking available after first predictions are resolved.'}</div>`;return;}
+  c.innerHTML='';
+  ent.forEach(([wallet,d],i)=>{
+    const isMe=w&&wallet===w;const name=d.alias||(wallet.slice(0,6)+'...'+wallet.slice(-4));
+    const row=document.createElement('div');row.className='lb-row';
+    row.innerHTML=`<div class="lb-rank ${i<3?'top':''}">${MD[i]||i+1}</div><div class="lb-info"><div class="lb-name">${name}${isMe?'<span style="font-size:9px;color:var(--green);margin-left:5px">'+(isEs()?'(Tú)':'(You)')+'</span>':''}</div><div class="lb-stats">${d.wins} ${isEs()?'ganados':'wins'} · ${d.total} ${isEs()?'participaciones':'entries'}</div></div><div class="lb-oti">${d.oti.toLocaleString()} $OTI</div>`;
+    c.appendChild(row);
+  });
+}
+
+/* ═══ ADMIN LIST ═══ */
+function renderAList(){
+  const c=document.getElementById('aPredList');
+  if(!STATE.preds.length){c.innerHTML=`<div style="font-size:.72rem;color:var(--muted);text-align:center;padding:1rem">${isEs()?'No hay pronósticos aún':'No predictions yet'}</div>`;return;}
+  c.innerHTML='';
+  STATE.preds.forEach(p=>{
+    const tv=Object.values(p.votes).reduce((a,b)=>a+b,0);
+    const div=document.createElement('div');div.className='pmr';
+    const acts=p.status==='open'
+      ?`<select class="pmr-sel" id="rs${p.id}">${p.opts.map(o=>`<option value="${o}">${o}</option>`).join('')}</select><button class="pmr-btn res" onclick="resolvePred(${p.id},document.getElementById('rs${p.id}').value)">${isEs()?'Resolver':'Resolve'}</button>`
+      :`<span style="font-size:.62rem;color:var(--green)">✓ ${isEs()?'Ganó':'Winner'}: ${p.winner} · ${p.winners.length} ${isEs()?'ganadores':'winners'}</span>`;
+    div.innerHTML=`<div class="pmr-q">${p.q}</div><div class="pmr-meta">${p.opts.join(' · ')} | ${p.reward.toLocaleString()} $OTI | ${p.wc} ${isEs()?'ganadores':'winners'} | ${isEs()?'Método':'Method'}: ${p.method} | ${tv} ${isEs()?'votos':'votes'}</div><div class="pmr-acts">${acts}<button class="pmr-btn del" onclick="deletePred(${p.id})">${isEs()?'Eliminar':'Delete'}</button></div>`;
+    c.appendChild(div);
+  });
+}
+
+/* ═══ INIT ═══ */
+try{const dl=document.getElementById('fd');if(dl){const d=new Date();d.setDate(d.getDate()+7);dl.value=d.toISOString().slice(0,16);}}catch(e){}
+
+/* Auto-sync cada 30 segundos */
+setInterval(async()=>{ await syncFromCloud(); }, 30000);
+
+/* Arranque — checkAdminURL al final garantiza que el DOM está listo */
+window.addEventListener('load', ()=>{
+  checkAdminURL();
+  initDB();
+});
+</script>
+</body>
+</html>
