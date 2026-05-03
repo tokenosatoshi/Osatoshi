@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Osatoshi — Mine the Future</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #F7C948;
+    --orange: #E8641A;
+    --dark: #0A0A08;
+    --dark2: #111110;
+    --dark3: #1A1A18;
+    --cream: #F5F0E8;
+    --muted: #888880;
+    --border: rgba(247,201,72,0.15);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--dark);
+    color: var(--cream);
+    font-family: 'Space Mono', monospace;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  /* ── LANGUAGE SYSTEM ── */
+  .t { display: none; }
+  body.lang-es .t-es { display: revert; }
+  body.lang-en .t-en { display: revert; }
+  span.t { display: none; }
+  body.lang-es span.t-es { display: inline; }
+  body.lang-en span.t-en { display: inline; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.2rem 4rem;
+    background: rgba(10,10,8,0.88);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    gap: 1rem;
+  }
+  .nav-logo {
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem;
+    letter-spacing: -0.02em; color: var(--gold); text-decoration: none; flex-shrink: 0;
+  }
+  .nav-logo span { color: var(--cream); }
+  nav ul { display: flex; gap: 2rem; list-style: none; align-items: center; }
+  nav a {
+    color: var(--muted); text-decoration: none; font-size: 0.72rem;
+    letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.2s;
+  }
+  nav a:hover { color: var(--gold); }
+  .nav-cta {
+    background: var(--gold) !important; color: var(--dark) !important;
+    padding: 0.5rem 1.3rem; font-weight: 700; font-size: 0.72rem !important;
+    letter-spacing: 0.08em; transition: background 0.2s, transform 0.15s !important;
+  }
+  .nav-cta:hover { background: var(--orange) !important; color: #fff !important; transform: translateY(-1px); }
+
+  /* LANG SWITCHER */
+  .lang-switcher {
+    display: flex; align-items: center; border: 1px solid var(--border); flex-shrink: 0;
+  }
+  .lang-btn {
+    background: none; border: none; cursor: pointer;
+    padding: 0.35rem 0.8rem;
+    font-family: 'Space Mono', monospace; font-size: 0.65rem;
+    font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--muted); transition: color 0.2s, background 0.2s;
+  }
+  .lang-btn.active { background: var(--gold); color: var(--dark); }
+  .lang-btn:not(.active):hover { color: var(--gold); }
+  .lang-divider { width: 1px; height: 1.4rem; background: var(--border); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 8rem 4rem 4rem; position: relative; text-align: center; overflow: hidden;
+  }
+  .hero-glow {
+    position: absolute; width: 700px; height: 700px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(247,201,72,0.12) 0%, transparent 70%);
+    top: 50%; left: 50%; transform: translate(-50%,-50%); pointer-events: none;
+  }
+  .hero-grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(247,201,72,0.04) 1px,transparent 1px),
+                      linear-gradient(90deg,rgba(247,201,72,0.04) 1px,transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent);
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(247,201,72,0.1); border: 1px solid rgba(247,201,72,0.3);
+    color: var(--gold); padding: 0.4rem 1rem; font-size: 0.7rem;
+    letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 2rem; position: relative;
+  }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(3.5rem, 8vw, 7.5rem);
+    font-weight: 800; line-height: 0.95; letter-spacing: -0.04em;
+    margin-bottom: 1.5rem; position: relative;
+  }
+  .hero h1 .line-gold    { color: var(--gold); display: block; }
+  .hero h1 .line-white   { color: var(--cream); display: block; }
+  .hero h1 .line-outline { color: transparent; -webkit-text-stroke: 1px rgba(247,201,72,0.4); display: block; }
+
+  .hero-sub {
+    font-size: 0.9rem; color: var(--muted); max-width: 500px;
+    line-height: 1.85; margin-bottom: 3rem; position: relative;
+  }
+  .hero-actions {
+    display: flex; gap: 1rem; justify-content: center;
+    flex-wrap: wrap; position: relative; margin-bottom: 4rem;
+  }
+  .btn-primary {
+    background: var(--gold); color: var(--dark); padding: 0.9rem 2.2rem;
+    font-family: 'Space Mono', monospace; font-weight: 700; font-size: 0.8rem;
+    letter-spacing: 0.05em; text-transform: uppercase; text-decoration: none;
+    border: none; cursor: pointer; transition: background 0.2s, transform 0.15s; display: inline-block;
+  }
+  .btn-primary:hover { background: var(--orange); color: #fff; transform: translateY(-2px); }
+  .btn-secondary {
+    background: transparent; color: var(--cream); padding: 0.9rem 2.2rem;
+    font-family: 'Space Mono', monospace; font-weight: 700; font-size: 0.8rem;
+    letter-spacing: 0.05em; text-transform: uppercase; text-decoration: none;
+    border: 1px solid rgba(245,240,232,0.2); cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s, color 0.2s; display: inline-block;
+  }
+  .btn-secondary:hover { border-color: var(--gold); color: var(--gold); transform: translateY(-2px); }
+
+  .stats-bar {
+    display: flex; border: 1px solid var(--border);
+    background: rgba(26,26,24,0.8); width: 100%; max-width: 740px; position: relative;
+  }
+  .stat-item { flex: 1; padding: 1.2rem 1.5rem; border-right: 1px solid var(--border); text-align: left; }
+  .stat-item:last-child { border-right: none; }
+  .stat-label { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; color: var(--gold); }
+
+  /* ── SECTIONS ── */
+  section { padding: 6rem 4rem; }
+  .section-label { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 1rem; }
+  .section-title { font-family: 'Syne', sans-serif; font-size: clamp(2rem,4vw,3.5rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; margin-bottom: 1.5rem; }
+
+  /* ABOUT */
+  #about { background: var(--dark2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .about-grid { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 6rem; align-items: center; }
+  .about-text p { color: var(--muted); line-height: 1.9; font-size: 0.85rem; margin-bottom: 1.2rem; }
+
+  .asic-card { background: var(--dark3); border: 1px solid var(--border); padding: 2.5rem; position: relative; overflow: hidden; }
+  .asic-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg,var(--gold),var(--orange)); }
+  .asic-card-title { font-family: 'Syne', sans-serif; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 1.5rem; }
+  .mining-animation { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .mining-row { display: flex; gap: 0.3rem; }
+  .mining-block { height: 8px; flex: 1; background: var(--dark); border: 1px solid rgba(247,201,72,0.1); animation: mine 3s infinite; }
+  .mining-block:nth-child(1){animation-delay:0s}.mining-block:nth-child(2){animation-delay:.3s}
+  .mining-block:nth-child(3){animation-delay:.6s}.mining-block:nth-child(4){animation-delay:.9s}
+  .mining-block:nth-child(5){animation-delay:1.2s}.mining-block:nth-child(6){animation-delay:1.5s}
+  @keyframes mine { 0%,100%{background:var(--dark);border-color:rgba(247,201,72,0.1)} 50%{background:rgba(247,201,72,0.3);border-color:var(--gold)} }
+  .asic-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .asic-stat { background: var(--dark); padding: 1rem; border: 1px solid var(--border); }
+  .asic-stat-label { font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
+  .asic-stat-val { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; color: var(--cream); }
+
+  /* TOKENOMICS */
+  #tokenomics-section { padding: 6rem 4rem; }
+  #tokenomics { max-width: 1100px; margin: 0 auto; }
+  .tokenomics-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 4rem; align-items: start; margin-top: 3rem; }
+  .token-info-list { display: flex; flex-direction: column; }
+  .token-info-item { display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 0; border-bottom: 1px solid var(--border); }
+  .token-info-item:first-child { border-top: 1px solid var(--border); }
+  .token-info-label { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .token-info-value { font-family: 'Syne', sans-serif; font-weight: 700; color: var(--cream); font-size: 0.95rem; }
+  .token-info-value.gold { color: var(--gold); }
+
+  .burn-tracker { background: var(--dark3); border: 1px solid var(--border); padding: 2rem; position: relative; overflow: hidden; }
+  .burn-tracker::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg,var(--orange),var(--gold)); }
+  .burn-title { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--orange); margin-bottom: 1.5rem; }
+  .burn-event { display: flex; align-items: center; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--border); }
+  .burn-event:last-of-type { border-bottom: none; }
+  .burn-icon { font-size: 1.5rem; min-width: 2rem; text-align: center; }
+  .burn-detail-label { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.2rem; }
+  .burn-detail-val { font-family: 'Syne', sans-serif; font-weight: 700; color: var(--gold); }
+  .burn-bar-wrap { margin-top: 1.5rem; }
+  .burn-bar-label { display: flex; justify-content: space-between; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+  .burn-bar { height: 6px; background: var(--dark); border: 1px solid var(--border); overflow: hidden; }
+  .burn-bar-fill { height: 100%; background: linear-gradient(90deg,var(--orange),var(--gold)); width: 0%; transition: width 2s ease; }
+
+  /* ROADMAP */
+  #roadmap-section { background: var(--dark2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6rem 4rem; }
+  .roadmap-inner { max-width: 900px; margin: 0 auto; }
+  .roadmap-list { margin-top: 3rem; position: relative; }
+  .roadmap-list::before { content: ''; position: absolute; left: 1.5rem; top: 0; bottom: 0; width: 1px; background: linear-gradient(180deg,var(--gold),transparent); }
+  .roadmap-item { display: flex; gap: 2.5rem; margin-bottom: 3rem; }
+  .roadmap-dot { min-width: 3rem; display: flex; flex-direction: column; align-items: center; padding-top: 0.3rem; }
+  .rdot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--gold); background: var(--dark); position: relative; z-index: 1; }
+  .rdot.done { background: var(--gold); }
+  .rdot.active { background: var(--orange); border-color: var(--orange); animation: activepulse 2s infinite; }
+  @keyframes activepulse { 0%,100%{box-shadow:0 0 12px rgba(232,100,26,.5)} 50%{box-shadow:0 0 24px rgba(232,100,26,.8)} }
+  .roadmap-content { flex: 1; padding-bottom: 1rem; }
+  .roadmap-phase { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
+  .roadmap-title { font-family: 'Syne', sans-serif; font-size: 1.15rem; font-weight: 700; color: var(--cream); margin-bottom: 0.6rem; }
+  .roadmap-title.active-title { color: var(--gold); }
+  .roadmap-desc { font-size: 0.78rem; color: var(--muted); line-height: 2; }
+  .roadmap-desc br + br { display: none; }
+  .roadmap-tag { display: inline-block; margin-top: 0.8rem; padding: 0.25rem 0.7rem; font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; border: 1px solid; }
+  .tag-done   { color: var(--gold); border-color: rgba(247,201,72,.3); }
+  .tag-active { color: var(--orange); border-color: rgba(232,100,26,.4); background: rgba(232,100,26,.08); }
+  .tag-next   { color: var(--muted); border-color: rgba(136,136,128,.3); }
+
+  /* BUY */
+  #buy-section { padding: 6rem 4rem; max-width: 1100px; margin: 0 auto; }
+  .buy-steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 2px; margin-top: 3rem; background: var(--border); }
+  .buy-step { background: var(--dark2); padding: 2.5rem 2rem; position: relative; overflow: hidden; transition: background 0.2s; }
+  .buy-step:hover { background: var(--dark3); }
+  .buy-step::before { content: attr(data-num); position: absolute; top: -.5rem; right: 1rem; font-family: 'Syne',sans-serif; font-size: 5rem; font-weight: 800; color: rgba(247,201,72,.05); line-height: 1; pointer-events: none; }
+  .buy-step-icon { font-size: 1.8rem; margin-bottom: 1.2rem; }
+  .buy-step-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; color: var(--cream); margin-bottom: 0.7rem; }
+  .buy-step-desc { font-size: 0.75rem; color: var(--muted); line-height: 1.8; }
+  .buy-step-link { display: inline-block; margin-top: 1.2rem; color: var(--gold); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; border-bottom: 1px solid rgba(247,201,72,.3); padding-bottom: 0.1rem; transition: border-color 0.2s; }
+  .buy-step-link:hover { border-color: var(--gold); }
+
+  .ca-box { max-width: 720px; margin: 3rem auto 0; background: var(--dark3); border: 1px solid var(--border); padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .ca-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
+  .ca-address { font-size: 0.72rem; color: var(--gold); word-break: break-all; letter-spacing: 0.02em; }
+  .copy-btn { background: var(--gold); color: var(--dark); border: none; padding: 0.6rem 1.2rem; font-family: 'Space Mono',monospace; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+  .copy-btn:hover { background: var(--orange); color: #fff; }
+
+  /* ZEALY */
+  #zealy-section { padding: 6rem 4rem; background: var(--dark2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .zealy-inner { max-width: 900px; margin: 0 auto; }
+  .zealy-card {
+    margin-top: 3rem; background: var(--dark3);
+    border: 1px solid rgba(247,201,72,0.25);
+    position: relative; overflow: hidden;
+  }
+  .zealy-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, #F7C948, #E8641A, #F7C948);
+  }
+  .zealy-top {
+    padding: 2.5rem 2.5rem 2rem;
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 2rem; flex-wrap: wrap;
+  }
+  .zealy-badge {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(247,201,72,0.1); border: 1px solid rgba(247,201,72,0.3);
+    color: var(--gold); padding: 0.3rem 0.9rem;
+    font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .zealy-reward {
+    text-align: center; flex-shrink: 0;
+    background: var(--dark); border: 1px solid var(--border);
+    padding: 1.5rem 2rem;
+  }
+  .zealy-reward-label { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+  .zealy-reward-val { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; color: var(--gold); line-height: 1; }
+  .zealy-reward-token { font-size: 0.7rem; color: var(--muted); margin-top: 0.3rem; letter-spacing: 0.1em; }
+  .zealy-tasks {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 2px; background: var(--border);
+    border-top: 1px solid var(--border);
+  }
+  .zealy-task {
+    background: var(--dark2); padding: 1.2rem 1.5rem;
+    display: flex; align-items: center; gap: 1rem;
+    transition: background 0.2s;
+  }
+  .zealy-task:hover { background: var(--dark3); }
+  .zt-icon { font-size: 1.4rem; min-width: 2rem; text-align: center; }
+  .zt-name { font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700; color: var(--cream); margin-bottom: 0.2rem; }
+  .zt-desc { font-size: 0.68rem; color: var(--muted); line-height: 1.5; }
+  .zealy-cta { padding: 2rem 2.5rem; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+  .zealy-cta-text { font-size: 0.8rem; color: var(--muted); line-height: 1.7; max-width: 480px; }
+  .btn-zealy {
+    background: var(--gold); color: var(--dark);
+    padding: 0.9rem 2.2rem; font-family: 'Space Mono', monospace;
+    font-weight: 700; font-size: 0.8rem; letter-spacing: 0.05em;
+    text-transform: uppercase; text-decoration: none; border: none;
+    cursor: pointer; transition: background 0.2s, transform 0.15s;
+    display: inline-block; white-space: nowrap;
+  }
+  .btn-zealy:hover { background: var(--orange); color: white; transform: translateY(-2px); }
+  @media (max-width: 900px) {
+    #zealy-section { padding: 4rem 1.5rem; }
+    .zealy-top { flex-direction: column; }
+    .zealy-tasks { grid-template-columns: 1fr; }
+    .zealy-cta { flex-direction: column; }
+  }
+
+  /* TRANSPARENCY */
+  #transparency-section { padding: 6rem 4rem; }
+  .transparency-inner { max-width: 900px; margin: 0 auto; }
+  .wallet-list { display: flex; flex-direction: column; gap: 2px; margin-top: 3rem; background: var(--border); }
+  .wallet-item {
+    background: var(--dark2);
+    padding: 1.6rem 2rem;
+    display: flex; align-items: flex-start;
+    gap: 1.5rem;
+    transition: background 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .wallet-item:hover { background: var(--dark3); }
+  .wallet-item::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+  .wallet-item.creator::before { background: var(--gold); }
+  .wallet-item.burn::before   { background: var(--orange); }
+  .wallet-item.rewards::before { background: #4ade80; }
+  .wallet-icon { font-size: 1.6rem; min-width: 2.2rem; padding-top: 0.1rem; }
+  .wallet-info { flex: 1; min-width: 0; }
+  .wallet-role {
+    font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700;
+    color: var(--cream); margin-bottom: 0.3rem;
+  }
+  .wallet-desc { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.6rem; line-height: 1.6; }
+  .wallet-addr {
+    font-size: 0.65rem; color: var(--gold); letter-spacing: 0.04em;
+    word-break: break-all; line-height: 1.6;
+  }
+  .wallet-verify {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    margin-top: 0.7rem; padding: 0.3rem 0.8rem;
+    border: 1px solid rgba(247,201,72,0.25);
+    color: var(--gold); font-size: 0.62rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    text-decoration: none; transition: border-color 0.2s, background 0.2s;
+  }
+  .wallet-verify:hover { border-color: var(--gold); background: rgba(247,201,72,0.07); }
+  .transparency-note {
+    margin-top: 2rem; padding: 1.2rem 1.6rem;
+    border: 1px solid rgba(74,222,128,0.2);
+    background: rgba(74,222,128,0.04);
+    font-size: 0.75rem; color: var(--muted); line-height: 1.8;
+  }
+  .transparency-note strong { color: #4ade80; }
+  @media (max-width: 900px) {
+    #transparency-section { padding: 4rem 1.5rem; }
+    .wallet-item { flex-direction: column; gap: 0.8rem; }
+  }
+  #community-section { background: var(--dark2); border-top: 1px solid var(--border); padding: 6rem 4rem; text-align: center; }
+  .community-inner { max-width: 700px; margin: 0 auto; }
+  .community-links { display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; margin-top: 3rem; }
+  .comm-link { display: flex; align-items: center; gap: 0.7rem; padding: 1rem 2rem; border: 1px solid var(--border); color: var(--cream); text-decoration: none; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; transition: border-color 0.2s, color 0.2s, background 0.2s; }
+  .comm-link:hover { border-color: var(--gold); color: var(--gold); background: rgba(247,201,72,.05); }
+  .comm-link svg { width: 18px; height: 18px; fill: currentColor; }
+
+  /* FOOTER */
+  footer { border-top: 1px solid var(--border); padding: 2rem 4rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+  .footer-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; color: var(--gold); }
+  .footer-logo span { color: var(--muted); }
+  .footer-text { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.05em; }
+  .footer-disclaimer { font-size: 0.6rem; color: rgba(136,136,128,.6); text-align: center; padding: 1rem 4rem 2rem; line-height: 1.7; max-width: 800px; margin: 0 auto; }
+
+  /* ANIMATIONS */
+  .fade-in { opacity: 0; transform: translateY(20px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    nav { padding: 1rem 1.5rem; }
+    nav ul { display: none; }
+    section,#roadmap-section,#buy-section,#community-section,#tokenomics-section { padding: 4rem 1.5rem; }
+    .hero { padding: 7rem 1.5rem 3rem; }
+    .about-grid,.tokenomics-grid { grid-template-columns: 1fr; gap: 3rem; }
+    .buy-steps { grid-template-columns: 1fr; }
+    footer { padding: 2rem 1.5rem; flex-direction: column; text-align: center; }
+    .stats-bar { flex-direction: column; }
+    .stat-item { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body class="lang-es">
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">Osa<span>toshi</span></a>
+  <ul>
+    <li><a href="#about"><span class="t t-es">Acerca</span><span class="t t-en">About</span></a></li>
+    <li><a href="#tokenomics-section">Tokenomics</a></li>
+    <li><a href="#roadmap-section">Roadmap</a></li>
+    <li><a href="#zealy-section"><span class="t t-es">Misiones</span><span class="t t-en">Missions</span></a></li>
+    <li><a href="#buy-section"><span class="t t-es">Comprar</span><span class="t t-en">Buy</span></a></li>
+    <li><a href="#transparency-section"><span class="t t-es">Transparencia</span><span class="t t-en">Transparency</span></a></li>
+    <li>
+      <a href="#community-section" class="nav-cta">
+        <span class="t t-es">Comunidad</span><span class="t t-en">Community</span>
+      </a>
+    </li>
+  </ul>
+  <div class="lang-switcher">
+    <button class="lang-btn active" id="btnEs" onclick="setLang('es')">ES</button>
+    <div class="lang-divider"></div>
+    <button class="lang-btn" id="btnEn" onclick="setLang('en')">EN</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-badge"><div class="badge-dot"></div>Live on Solana</div>
+
+  <h1>
+    <span class="line-outline">Mine</span>
+    <span class="line-gold">Bitcoin.</span>
+    <span class="line-white">
+      <span class="t t-es">Financia el</span><span class="t t-en">Fund the</span>
+    </span>
+    <span class="line-gold">
+      <span class="t t-es">Futuro.</span><span class="t t-en">Future.</span>
+    </span>
+  </h1>
+
+  <p class="hero-sub t t-es">Osatoshi es el token en Solana que conecta a los holders con minería real de Bitcoin mediante equipos ASIC. Las ganancias de minería se reinvierten en el crecimiento del proyecto.</p>
+  <p class="hero-sub t t-en">Osatoshi is the Solana token connecting holders to real Bitcoin mining through ASIC hardware. Mining profits are reinvested directly into the project's growth.</p>
+
+  <div class="hero-actions">
+    <a href="https://pump.fun/coin/6wKTvYqMggUVBcyecUxTSg5qG4aqNu7NpJqkAADKKnyr" target="_blank" class="btn-primary">
+      <span class="t t-es">Comprar en Pump.fun</span><span class="t t-en">Buy on Pump.fun</span>
+    </a>
+    <a href="https://jup.ag/?buy=6wKTvYqMggUVBcyecUxTSg5qG4aqNu7NpJqkAADKKnyr" target="_blank" class="btn-secondary">
+      <span class="t t-es">Comprar en Jupiter</span><span class="t t-en">Buy on Jupiter</span>
+    </a>
+  </div>
+
+  <div class="stats-bar fade-in">
+    <div class="stat-item">
+      <div class="stat-label">Blockchain</div>
+      <div class="stat-value">Solana</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label"><span class="t t-es">Supply Total</span><span class="t t-en">Total Supply</span></div>
+      <div class="stat-value">984.6M</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label"><span class="t t-es">Tokens Quemados</span><span class="t t-en">Tokens Burned</span></div>
+      <div class="stat-value">15M+</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label"><span class="t t-es">Quemas realizadas</span><span class="t t-en">Burns done</span></div>
+      <div class="stat-value">2 Burns ✓</div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="about-grid">
+    <div class="about-text fade-in">
+      <div class="section-label"><span class="t t-es">¿Qué es Osatoshi?</span><span class="t t-en">What is Osatoshi?</span></div>
+      <h2 class="section-title">
+        <span class="t t-es">Minería real.<br>Token real.</span>
+        <span class="t t-en">Real mining.<br>Real token.</span>
+      </h2>
+      <p class="t t-es">Osatoshi ($OTI) es un token en la blockchain de Solana cuya utilidad está directamente ligada a la minería física de Bitcoin. Los fondos del proyecto se destinan a la adquisición de equipos ASIC de alto rendimiento.</p>
+      <p class="t t-en">Osatoshi ($OTI) is a Solana token whose utility is directly tied to physical Bitcoin mining. Project funds are allocated to acquiring high-performance ASIC hardware.</p>
+      <p class="t t-es">Las ganancias generadas por la minería de BTC se reinvierten en el ecosistema Osatoshi: desarrollo del proyecto, más equipos de minería y mayor valor para los holders.</p>
+      <p class="t t-en">Profits from BTC mining are reinvested into the Osatoshi ecosystem: project development, additional mining hardware, and greater value for holders.</p>
+      <p class="t t-es">No es un meme sin respaldo. Es infraestructura real de minería conectada a un token en Solana.</p>
+      <p class="t t-en">This isn't an empty meme token. It's real mining infrastructure connected to a live Solana token.</p>
+      <a href="#roadmap-section" class="btn-primary" style="margin-top:1.5rem;display:inline-block;">
+        <span class="t t-es">Ver Roadmap</span><span class="t t-en">See Roadmap</span>
+      </a>
+    </div>
+    <div class="about-visual fade-in">
+      <div class="asic-card">
+        <div class="asic-card-title">🔩 ASIC Mining Status</div>
+        <div class="mining-animation">
+          <div class="mining-row"><div class="mining-block"></div><div class="mining-block"></div><div class="mining-block"></div><div class="mining-block"></div><div class="mining-block"></div><div class="mining-block"></div></div>
+          <div class="mining-row"><div class="mining-block"></div><div class="mining-block"></div><div class="mining-block"></div><div class="mining-block"></div><div class="mining-block"></div><div class="mining-block"></div></div>
+          <div class="mining-row"><div class="mining-block"></div><div class="mining-block"></div><div class="mining-block"></div><div class="mining-block"></div><div class="mining-block"></div><div class="mining-block"></div></div>
+        </div>
+        <div class="asic-stats">
+          <div class="asic-stat">
+            <div class="asic-stat-label"><span class="t t-es">Objetivo</span><span class="t t-en">Goal</span></div>
+            <div class="asic-stat-val">1st ASIC</div>
+          </div>
+          <div class="asic-stat">
+            <div class="asic-stat-label">Status</div>
+            <div class="asic-stat-val" style="color:var(--gold)"><span class="t t-es">En marcha ⚡</span><span class="t t-en">In progress ⚡</span></div>
+          </div>
+          <div class="asic-stat">
+            <div class="asic-stat-label"><span class="t t-es">Destino ganancias</span><span class="t t-en">Profit target</span></div>
+            <div class="asic-stat-val">BTC → OTI</div>
+          </div>
+          <div class="asic-stat">
+            <div class="asic-stat-label">Network</div>
+            <div class="asic-stat-val">Solana</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TOKENOMICS -->
+<section id="tokenomics-section">
+  <div id="tokenomics">
+    <div class="section-label fade-in">Tokenomics</div>
+    <h2 class="section-title fade-in">
+      <span class="t t-es">Distribución<br>transparente.</span>
+      <span class="t t-en">Transparent<br>distribution.</span>
+    </h2>
+    <div class="tokenomics-grid">
+      <div class="token-info-list fade-in">
+        <div class="token-info-item"><span class="token-info-label"><span class="t t-es">Nombre</span><span class="t t-en">Name</span></span><span class="token-info-value">Osatoshi</span></div>
+        <div class="token-info-item"><span class="token-info-label">Ticker</span><span class="token-info-value gold">$OTI</span></div>
+        <div class="token-info-item"><span class="token-info-label">Blockchain</span><span class="token-info-value">Solana</span></div>
+        <div class="token-info-item"><span class="token-info-label"><span class="t t-es">Supply Total</span><span class="t t-en">Total Supply</span></span><span class="token-info-value">984,638,600</span></div>
+        <div class="token-info-item"><span class="token-info-label"><span class="t t-es">Tokens Quemados</span><span class="t t-en">Tokens Burned</span></span><span class="token-info-value gold">15,000,000+</span></div>
+        <div class="token-info-item"><span class="token-info-label"><span class="t t-es">Quemas del equipo</span><span class="t t-en">Team burns</span></span><span class="token-info-value"><span class="t t-es">2 realizadas</span><span class="t t-en">2 completed</span></span></div>
+        <div class="token-info-item"><span class="token-info-label">Exchanges</span><span class="token-info-value">Pump.fun · Jupiter</span></div>
+        <div class="token-info-item"><span class="token-info-label"><span class="t t-es">Creación</span><span class="t t-en">Created</span></span><span class="token-info-value">Dec 7, 2025</span></div>
+      </div>
+
+      <div class="burn-tracker fade-in">
+        <div class="burn-title">🔥 <span class="t t-es">Historial de Quemas</span><span class="t t-en">Burn History</span></div>
+        <div class="burn-event">
+          <div class="burn-icon">🔥</div>
+          <div><div class="burn-detail-label"><span class="t t-es">1er Token Burn</span><span class="t t-en">1st Token Burn</span></div><div class="burn-detail-val">5,000,000 OTI</div></div>
+          <div style="margin-left:auto;font-size:.65rem;color:var(--muted)"><span class="t t-es">Completado ✓</span><span class="t t-en">Completed ✓</span></div>
+        </div>
+        <div class="burn-event">
+          <div class="burn-icon">🔥</div>
+          <div><div class="burn-detail-label"><span class="t t-es">2do Token Burn</span><span class="t t-en">2nd Token Burn</span></div><div class="burn-detail-val">10,000,000 OTI</div></div>
+          <div style="margin-left:auto;font-size:.65rem;color:var(--muted)"><span class="t t-es">Completado ✓</span><span class="t t-en">Completed ✓</span></div>
+        </div>
+        <div class="burn-event">
+          <div class="burn-icon">💎</div>
+          <div><div class="burn-detail-label"><span class="t t-es">Quemas de holders</span><span class="t t-en">Holder burns</span></div><div class="burn-detail-val"><span class="t t-es">Adicionales</span><span class="t t-en">Additional</span></div></div>
+          <div style="margin-left:auto;font-size:.65rem;color:var(--gold)"><span class="t t-es">Orgánico</span><span class="t t-en">Organic</span></div>
+        </div>
+        <div class="burn-bar-wrap">
+          <div class="burn-bar-label">
+            <span><span class="t t-es">Quemado</span><span class="t t-en">Burned</span></span>
+            <span>~1.5% <span class="t t-es">del supply</span><span class="t t-en">of supply</span></span>
+          </div>
+          <div class="burn-bar"><div class="burn-bar-fill" id="burnBar"></div></div>
+        </div>
+        <p style="font-size:.7rem;color:var(--muted);margin-top:1.2rem;line-height:1.8;" class="t t-es">Las quemas reducen el supply circulante, creando presión deflacionaria sobre el token. El equipo se compromete a burns periódicos según el roadmap.</p>
+        <p style="font-size:.7rem;color:var(--muted);margin-top:1.2rem;line-height:1.8;" class="t t-en">Burns reduce the circulating supply, creating deflationary pressure on the token. The team is committed to periodic burns as outlined in the roadmap.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ROADMAP -->
+<section id="roadmap-section">
+  <div class="roadmap-inner">
+    <div class="section-label fade-in">Roadmap 2026</div>
+    <h2 class="section-title fade-in">
+      <span class="t t-es">El camino<br>hacia adelante.</span>
+      <span class="t t-en">The road<br>ahead.</span>
+    </h2>
+
+    <div class="roadmap-list">
+
+      <!-- Q1 -->
+      <div class="roadmap-item fade-in">
+        <div class="roadmap-dot"><div class="rdot done"></div></div>
+        <div class="roadmap-content">
+          <div class="roadmap-phase">Q1 2025–2026</div>
+          <div class="roadmap-title"><span class="t t-es">Fundamentos del Proyecto</span><span class="t t-en">Project Foundations</span></div>
+          <div class="roadmap-desc t t-es">
+            ✅ Lanzamiento del token OTI en Solana (Dic 2025)<br>
+            ✅ Activación del Plan de Quemas<br>
+            ✅ Primera quema de tokens<br>
+            ✅ Inicio de la comunidad en X, Telegram y Discord<br>
+            ✅ Publicación de la visión del proyecto
+          </div>
+          <div class="roadmap-desc t t-en">
+            ✅ OTI token launched on Solana (Dec 2025)<br>
+            ✅ Burn Plan activated<br>
+            ✅ First token burn executed<br>
+            ✅ Community initiated on X, Telegram & Discord<br>
+            ✅ Project vision published
+          </div>
+          <span class="roadmap-tag tag-done"><span class="t t-es">Completado ✓</span><span class="t t-en">Completed ✓</span></span>
+        </div>
+      </div>
+
+      <!-- Q2 -->
+      <div class="roadmap-item fade-in">
+        <div class="roadmap-dot"><div class="rdot active"></div></div>
+        <div class="roadmap-content">
+          <div class="roadmap-phase">Q2 2026</div>
+          <div class="roadmap-title active-title">⚡ <span class="t t-es">Minería & Graduación</span><span class="t t-en">Mining & Graduation</span></div>
+          <div class="roadmap-desc t t-es">
+            ⚡ Compra del primer equipo ASIC<br>
+            ✅ Segunda quema de tokens<br>
+            ⏳ Publicación de la dirección BTC minada<br>
+            ⏳ Graduación del token en Pump.fun
+          </div>
+          <div class="roadmap-desc t t-en">
+            ⚡ Purchase of first ASIC hardware<br>
+            ✅ Second token burn<br>
+            ⏳ Publication of mined BTC address<br>
+            ⏳ Token graduation on Pump.fun
+          </div>
+          <span class="roadmap-tag tag-active"><span class="t t-es">En curso →</span><span class="t t-en">In progress →</span></span>
+        </div>
+      </div>
+
+      <!-- Q3 -->
+      <div class="roadmap-item fade-in">
+        <div class="roadmap-dot"><div class="rdot"></div></div>
+        <div class="roadmap-content">
+          <div class="roadmap-phase">Q3 2026</div>
+          <div class="roadmap-title"><span class="t t-es">Expansión de Minería</span><span class="t t-en">Mining Expansion</span></div>
+          <div class="roadmap-desc t t-es">
+            ⏳ Compra del 3er y 4to ASIC<br>
+            ⏳ Tercera quema de tokens<br>
+            ✅ Creación del sitio web oficial
+          </div>
+          <div class="roadmap-desc t t-en">
+            ⏳ Purchase of 3rd and 4th ASIC<br>
+            ⏳ Third token burn<br>
+            ✅ Official website created
+          </div>
+          <span class="roadmap-tag tag-next"><span class="t t-es">Próximo</span><span class="t t-en">Next</span></span>
+        </div>
+      </div>
+
+      <!-- Q4 -->
+      <div class="roadmap-item fade-in">
+        <div class="roadmap-dot"><div class="rdot"></div></div>
+        <div class="roadmap-content">
+          <div class="roadmap-phase">Q4 2026</div>
+          <div class="roadmap-title"><span class="t t-es">Crecimiento Continuo</span><span class="t t-en">Continuous Growth</span></div>
+          <div class="roadmap-desc t t-es">
+            ⏳ Adquisición continua de equipos ASIC<br>
+            ⏳ Quemas de tokens continuas<br>
+            ⏳ Verificación del token
+          </div>
+          <div class="roadmap-desc t t-en">
+            ⏳ Continuous ASIC acquisition<br>
+            ⏳ Continuous token burns<br>
+            ⏳ Token verification
+          </div>
+          <span class="roadmap-tag tag-next"><span class="t t-es">Planificado</span><span class="t t-en">Planned</span></span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- BUY -->
+<section id="buy-section">
+  <div class="section-label fade-in"><span class="t t-es">Cómo comprar</span><span class="t t-en">How to buy</span></div>
+  <h2 class="section-title fade-in">
+    <span class="t t-es">Únete en<br>3 pasos.</span>
+    <span class="t t-en">Join in<br>3 steps.</span>
+  </h2>
+  <div class="buy-steps fade-in">
+    <div class="buy-step" data-num="1">
+      <div class="buy-step-icon">👛</div>
+      <div class="buy-step-title"><span class="t t-es">Obtén una wallet Solana</span><span class="t t-en">Get a Solana wallet</span></div>
+      <div class="buy-step-desc t t-es">Descarga Phantom o Solflare. Crea tu wallet y guarda tu seed phrase en un lugar seguro.</div>
+      <div class="buy-step-desc t t-en">Download Phantom or Solflare. Create your wallet and store your seed phrase somewhere safe.</div>
+      <a href="https://phantom.app" target="_blank" class="buy-step-link">phantom.app →</a>
+    </div>
+    <div class="buy-step" data-num="2">
+      <div class="buy-step-icon">💸</div>
+      <div class="buy-step-title"><span class="t t-es">Añade SOL a tu wallet</span><span class="t t-en">Add SOL to your wallet</span></div>
+      <div class="buy-step-desc t t-es">Compra SOL en cualquier exchange (Binance, Coinbase, Kraken) y transfiere a tu wallet de Phantom.</div>
+      <div class="buy-step-desc t t-en">Buy SOL on any exchange (Binance, Coinbase, Kraken) and transfer it to your Phantom wallet.</div>
+    </div>
+    <div class="buy-step" data-num="3">
+      <div class="buy-step-icon">🚀</div>
+      <div class="buy-step-title"><span class="t t-es">Compra OTI</span><span class="t t-en">Buy OTI</span></div>
+      <div class="buy-step-desc t t-es">Ve a Pump.fun o Jupiter, pega el Contract Address de Osatoshi y realiza el swap de SOL por OTI.</div>
+      <div class="buy-step-desc t t-en">Go to Pump.fun or Jupiter, paste the Osatoshi Contract Address and swap your SOL for OTI.</div>
+      <a href="https://pump.fun/coin/6wKTvYqMggUVBcyecUxTSg5qG4aqNu7NpJqkAADKKnyr" target="_blank" class="buy-step-link">pump.fun →</a>
+    </div>
+  </div>
+  <div class="ca-box fade-in">
+    <div>
+      <div class="ca-label">Contract Address (CA)</div>
+      <div class="ca-address">6wKTvYqMggUVBcyecUxTSg5qG4aqNu7NpJqkAADKKnyr</div>
+    </div>
+    <button class="copy-btn" id="copyBtn" onclick="copyCA()">
+      <span class="t t-es">Copiar CA</span><span class="t t-en">Copy CA</span>
+    </button>
+  </div>
+</section>
+
+<!-- ZEALY -->
+<section id="zealy-section">
+  <div class="zealy-inner">
+    <div class="section-label fade-in"><span class="t t-es">Gana $OTI</span><span class="t t-en">Earn $OTI</span></div>
+    <h2 class="section-title fade-in">
+      <span class="t t-es">Completa misiones.<br>Gana tokens.</span>
+      <span class="t t-en">Complete missions.<br>Earn tokens.</span>
+    </h2>
+    <p style="color:var(--muted);font-size:.85rem;line-height:1.9;margin-top:0;" class="fade-in t t-es">
+      Únete a nuestra plataforma Zealy, completa tareas sencillas y recibe $OTI directamente en tu wallet. Recompensamos a quienes apoyan el crecimiento del proyecto.
+    </p>
+    <p style="color:var(--muted);font-size:.85rem;line-height:1.9;margin-top:0;" class="fade-in t t-en">
+      Join our Zealy platform, complete simple tasks and receive $OTI directly to your wallet. We reward those who support the project's growth.
+    </p>
+
+    <div class="zealy-card fade-in">
+      <div class="zealy-top">
+        <div>
+          <div class="zealy-badge">⚡ <span class="t t-es">Misiones activas</span><span class="t t-en">Active missions</span></div>
+          <h3 style="font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--cream);margin-bottom:0.6rem;">
+            <span class="t t-es">Osatoshi Questboard</span><span class="t t-en">Osatoshi Questboard</span>
+          </h3>
+          <p style="font-size:0.78rem;color:var(--muted);line-height:1.8;max-width:420px;" class="t t-es">
+            Realiza tareas rápidas y sencillas para apoyar el proyecto. Cada misión completada te da puntos canjeables por $OTI reales.
+          </p>
+          <p style="font-size:0.78rem;color:var(--muted);line-height:1.8;max-width:420px;" class="t t-en">
+            Complete quick and simple tasks to support the project. Each completed mission gives you points redeemable for real $OTI.
+          </p>
+        </div>
+        <div class="zealy-reward">
+          <div class="zealy-reward-label"><span class="t t-es">Recompensa total</span><span class="t t-en">Total reward</span></div>
+          <div class="zealy-reward-val">50,000</div>
+          <div class="zealy-reward-token">$OTI</div>
+        </div>
+      </div>
+
+      <div class="zealy-tasks">
+        <div class="zealy-task">
+          <div class="zt-icon">💬</div>
+          <div>
+            <div class="zt-name"><span class="t t-es">Únete al Telegram</span><span class="t t-en">Join Telegram</span></div>
+            <div class="zt-desc"><span class="t t-es">Entra a nuestra comunidad oficial</span><span class="t t-en">Join our official community</span></div>
+          </div>
+        </div>
+        <div class="zealy-task">
+          <div class="zt-icon">🎮</div>
+          <div>
+            <div class="zt-name"><span class="t t-es">Únete al Discord</span><span class="t t-en">Join Discord</span></div>
+            <div class="zt-desc"><span class="t t-es">Conéctate con los holders</span><span class="t t-en">Connect with holders</span></div>
+          </div>
+        </div>
+        <div class="zealy-task">
+          <div class="zt-icon">🎵</div>
+          <div>
+            <div class="zt-name"><span class="t t-es">Ver video en TikTok</span><span class="t t-en">Watch TikTok video</span></div>
+            <div class="zt-desc"><span class="t t-es">Conoce el proyecto en video</span><span class="t t-en">Learn about the project on video</span></div>
+          </div>
+        </div>
+        <div class="zealy-task">
+          <div class="zt-icon">🌐</div>
+          <div>
+            <div class="zt-name"><span class="t t-es">Visitar el sitio web</span><span class="t t-en">Visit the website</span></div>
+            <div class="zt-desc"><span class="t t-es">Explora todo sobre $OTI</span><span class="t t-en">Explore everything about $OTI</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="zealy-cta">
+        <p class="zealy-cta-text t t-es">
+          Las recompensas se distribuyen desde la wallet oficial de premios. Verificable en Solscan. Completa todas las misiones para recibir tus <strong style="color:var(--gold)">50,000 $OTI</strong>.
+        </p>
+        <p class="zealy-cta-text t t-en">
+          Rewards are distributed from the official prizes wallet. Verifiable on Solscan. Complete all missions to receive your <strong style="color:var(--gold)">50,000 $OTI</strong>.
+        </p>
+        <a href="https://zealy.io/cw/osatoshiofficial/questboard" target="_blank" class="btn-zealy">
+          <span class="t t-es">Empezar misiones →</span><span class="t t-en">Start missions →</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRANSPARENCY -->
+<section id="transparency-section">
+  <div class="transparency-inner">
+    <div class="section-label fade-in"><span class="t t-es">Transparencia</span><span class="t t-en">Transparency</span></div>
+    <h2 class="section-title fade-in">
+      <span class="t t-es">Billeteras<br>verificables.</span>
+      <span class="t t-en">Verifiable<br>wallets.</span>
+    </h2>
+    <p style="color:var(--muted);font-size:.85rem;line-height:1.9;margin-top:0;" class="fade-in t t-es">
+      Todas las billeteras del proyecto son públicas y verificables en Solscan. Cualquier inversor puede auditar los movimientos en tiempo real.
+    </p>
+    <p style="color:var(--muted);font-size:.85rem;line-height:1.9;margin-top:0;" class="fade-in t t-en">
+      All project wallets are public and verifiable on Solscan. Any investor can audit transactions in real time.
+    </p>
+
+    <div class="wallet-list fade-in">
+
+      <div class="wallet-item creator">
+        <div class="wallet-icon">👤</div>
+        <div class="wallet-info">
+          <div class="wallet-role"><span class="t t-es">Billetera del Creador</span><span class="t t-en">Creator Wallet</span></div>
+          <div class="wallet-desc t t-es">Billetera principal del fundador del proyecto. Puedes verificar que no se están realizando ventas masivas.</div>
+          <div class="wallet-desc t t-en">Main wallet of the project founder. You can verify no large sell-offs are taking place.</div>
+          <div class="wallet-addr">7H9ZLBimPQE6fvivYFx59rUqMj7fSqmoby1V5JUcyHtK</div>
+          <a href="https://solscan.io/account/7H9ZLBimPQE6fvivYFx59rUqMj7fSqmoby1V5JUcyHtK" target="_blank" class="wallet-verify">
+            🔍 <span class="t t-es">Verificar en Solscan</span><span class="t t-en">Verify on Solscan</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="wallet-item burn">
+        <div class="wallet-icon">🔥</div>
+        <div class="wallet-info">
+          <div class="wallet-role"><span class="t t-es">Billetera de Quemas</span><span class="t t-en">Burn Wallet</span></div>
+          <div class="wallet-desc t t-es">Billetera oficial donde se envían los tokens para ser quemados permanentemente. Aquí puedes confirmar las 2 quemas realizadas (5M + 10M $OTI).</div>
+          <div class="wallet-desc t t-en">Official wallet where tokens are sent to be permanently burned. Here you can confirm the 2 burns completed (5M + 10M $OTI).</div>
+          <div class="wallet-addr">Epi5EgKiRRXwWT3Qmh3fZWByXh5Nmm3bCkBLt1AM8g7i</div>
+          <a href="https://solscan.io/account/Epi5EgKiRRXwWT3Qmh3fZWByXh5Nmm3bCkBLt1AM8g7i" target="_blank" class="wallet-verify">
+            🔍 <span class="t t-es">Verificar en Solscan</span><span class="t t-en">Verify on Solscan</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="wallet-item rewards">
+        <div class="wallet-icon">🎁</div>
+        <div class="wallet-info">
+          <div class="wallet-role"><span class="t t-es">Billetera de Premios & Airdrops</span><span class="t t-en">Rewards & Airdrops Wallet</span></div>
+          <div class="wallet-desc t t-es">Billetera destinada a recompensar a la comunidad mediante concursos, eventos y airdrops a holders.</div>
+          <div class="wallet-desc t t-en">Wallet dedicated to rewarding the community through contests, events, and holder airdrops.</div>
+          <div class="wallet-addr">HhwEsWytSP6j7S2xXWnn7w3SgLTr2BWDQk2JM7SCSAb2</div>
+          <a href="https://solscan.io/account/HhwEsWytSP6j7S2xXWnn7w3SgLTr2BWDQk2JM7SCSAb2" target="_blank" class="wallet-verify">
+            🔍 <span class="t t-es">Verificar en Solscan</span><span class="t t-en">Verify on Solscan</span>
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="transparency-note fade-in">
+      <strong>✅ <span class="t t-es">Verificación independiente</span><span class="t t-en">Independent verification</span></strong> —
+      <span class="t t-es">No confíes, verifica. Todas las transacciones del proyecto Osatoshi están registradas en la blockchain de Solana y son públicas e inmutables.</span>
+      <span class="t t-en">Don't trust, verify. All Osatoshi project transactions are recorded on the Solana blockchain and are public and immutable.</span>
+    </div>
+  </div>
+</section>
+
+<!-- COMMUNITY -->
+<section id="community-section">
+  <div class="community-inner">
+    <div class="section-label fade-in"><span class="t t-es">Comunidad</span><span class="t t-en">Community</span></div>
+    <h2 class="section-title fade-in">
+      <span class="t t-es">Únete al<br>movimiento.</span>
+      <span class="t t-en">Join the<br>movement.</span>
+    </h2>
+    <p style="color:var(--muted);font-size:.85rem;line-height:1.9;margin-top:1rem;" class="fade-in t t-es">Síguenos para estar al día con el progreso de la minería, quemas de tokens y el crecimiento del proyecto. Tenemos canales en inglés y español.</p>
+    <p style="color:var(--muted);font-size:.85rem;line-height:1.9;margin-top:1rem;" class="fade-in t t-en">Follow us to stay updated on mining progress, token burns, and project milestones. We have dedicated channels in both English and Spanish.</p>
+
+    <div class="community-links fade-in">
+      <a href="https://x.com/Oshi_Network" target="_blank" class="comm-link">
+        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.727-8.835L1.254 2.25H8.08l4.258 5.639L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
+        X English
+      </a>
+      <a href="https://x.com/osatoshi_token" target="_blank" class="comm-link">
+        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.727-8.835L1.254 2.25H8.08l4.258 5.639L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
+        X Español
+      </a>
+      <a href="https://t.me/oshinetwork" target="_blank" class="comm-link">
+        <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        Telegram
+      </a>
+      <a href="https://discord.gg/Tzv8j9JD" target="_blank" class="comm-link">
+        <svg viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.001.022.012.042.03.056a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+        Discord
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Osa<span>toshi</span></div>
+  <div class="footer-text">© 2025–2026 Osatoshi. Built on Solana.</div>
+  <div class="footer-text">CA: 6wKTvYq...KKnyr</div>
+</footer>
+<div class="footer-disclaimer">
+  <span class="t t-es">⚠️ Aviso de riesgo: Invertir en criptomonedas conlleva riesgos significativos. Osatoshi no garantiza retornos. Haz tu propia investigación (DYOR) antes de invertir.</span>
+  <span class="t t-en">⚠️ Risk disclaimer: Investing in cryptocurrencies carries significant risks. Osatoshi does not guarantee returns. Do your own research (DYOR) before investing.</span>
+</div>
+
+<script>
+  /* LANG */
+  function setLang(lang) {
+    document.body.className = 'lang-' + lang;
+    document.getElementById('btnEs').classList.toggle('active', lang === 'es');
+    document.getElementById('btnEn').classList.toggle('active', lang === 'en');
+    document.documentElement.lang = lang;
+    try { localStorage.setItem('osa-lang', lang); } catch(e){}
+  }
+  try { const s = localStorage.getItem('osa-lang'); if(s) setLang(s); } catch(e){}
+
+  /* FADE IN */
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => { if(e.isIntersecting) setTimeout(() => e.target.classList.add('visible'), i*80); });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+
+  /* BURN BAR */
+  setTimeout(() => { document.getElementById('burnBar').style.width = '1.5%'; }, 900);
+
+  /* COPY CA */
+  function copyCA() {
+    const ca = '6wKTvYqMggUVBcyecUxTSg5qG4aqNu7NpJqkAADKKnyr';
+    const isEs = document.body.classList.contains('lang-es');
+    navigator.clipboard.writeText(ca).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = isEs ? '✓ Copiado!' : '✓ Copied!';
+      btn.style.background = '#2a9d60'; btn.style.color = 'white';
+      setTimeout(() => {
+        btn.innerHTML = '<span class="t t-es">Copiar CA</span><span class="t t-en">Copy CA</span>';
+        btn.style.background = ''; btn.style.color = '';
+        setLang(isEs ? 'es' : 'en');
+      }, 2000);
+    });
+  }
+
+  /* HERO STAGGER */
+  document.querySelectorAll('.hero > *').forEach((el, i) => {
+    el.style.cssText += 'opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease';
+    setTimeout(() => { el.style.opacity='1'; el.style.transform='translateY(0)'; }, 200 + i*150);
+  });
+</script>
+</body>
+</html>
