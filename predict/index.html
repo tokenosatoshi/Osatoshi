@@ -18,7 +18,8 @@ span.t{display:none}body.lang-es span.t-es{display:inline}body.lang-en span.t-en
 .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:var(--gold);letter-spacing:-.02em}.logo span{color:var(--cream)}
 .hdr-right{display:flex;align-items:center;gap:7px}
 .lang-sw{display:flex;border:1px solid var(--border)}.lbtn{background:none;border:none;padding:3px 9px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;letter-spacing:.08em}.lbtn.on{background:var(--gold);color:var(--dark)}
-.admin-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:3px 9px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-family:'Space Mono',monospace}
+.admin-btn{display:none;background:none;border:1px solid rgba(247,201,72,.3);color:var(--gold);padding:3px 9px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-family:'Space Mono',monospace}
+.admin-btn.visible{display:block}
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(68px + var(--sb))}.scroll::-webkit-scrollbar{display:none}
 .pg{display:none;padding:1.1rem;animation:fu .25s ease}.pg.on{display:block}
 @keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -155,7 +156,7 @@ textarea.finput{resize:vertical;min-height:60px}
   <div class="logo">OTI<span>Predict</span></div>
   <div class="hdr-right">
     <div class="lang-sw"><button class="lbtn on" id="bEs" onclick="setLang('es')">ES</button><button class="lbtn" id="bEn" onclick="setLang('en')">EN</button></div>
-    <button class="admin-btn" onclick="openP()">Admin</button>
+    <button class="admin-btn" id="adminBtn" onclick="openP()">Admin</button>
   </div>
 </div>
 <div class="scroll" id="scrl">
@@ -236,6 +237,26 @@ function mA(){return gs(K.alias)||'';}
 function isEs(){return document.body.classList.contains('lang-es');}
 function setLang(l){document.body.className='lang-'+l;document.getElementById('bEs').classList.toggle('on',l==='es');document.getElementById('bEn').classList.toggle('on',l==='en');try{ss('oti-lang',l);}catch(e){}renderAll();}
 try{const s=gs('oti-lang');if(s)setLang(s);}catch(e){}
+
+/* SECRET ADMIN URL CHECK */
+function checkAdminURL(){
+  const params=new URLSearchParams(window.location.search);
+  const adminKey=params.get('admin');
+  if(adminKey==='MikayOsa'){
+    document.getElementById('adminBtn').classList.add('visible');
+    ss('oti_admin_session','1');
+  } else if(gs('oti_admin_session')==='1'){
+    document.getElementById('adminBtn').classList.add('visible');
+  }
+}
+checkAdminURL();
+
+/* DUPLICATE VOTE CHECK */
+function hasVoted(predId){
+  const w=mW();if(!w)return false;
+  const votes=gVotes();
+  return votes[w]&&votes[w][predId]!==undefined;
+}
 function goTo(p,btn){document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.ni').forEach(x=>x.classList.remove('on'));document.getElementById('pg-'+p).classList.add('on');btn.classList.add('on');document.getElementById('scrl').scrollTop=0;if(p==='wallet')renderW();if(p==='rank')renderLB();}
 function openP(){document.getElementById('passOv').style.display='flex';document.getElementById('pInp').value='';document.getElementById('pErr').style.display='none';}
 function closeP(){document.getElementById('passOv').style.display='none';}
