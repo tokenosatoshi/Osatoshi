@@ -149,6 +149,50 @@
   }
   .btn-secondary:hover { border-color: var(--gold); color: var(--gold); transform: translateY(-2px); }
 
+  /* ── PREDICT BANNER ── */
+  .predict-section {
+    margin-top: 2.5rem; width: 100%; max-width: 740px;
+    background: linear-gradient(135deg, rgba(247,201,72,.06) 0%, rgba(232,100,26,.06) 100%);
+    border: 1px solid rgba(247,201,72,.25); position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
+    padding: 1.25rem 1.75rem;
+  }
+  .predict-section::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--gold), var(--orange));
+  }
+  .predict-section-left { flex: 1; }
+  .predict-section-tag {
+    font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--orange); margin-bottom: 0.35rem;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .predict-live-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #4ade80;
+    animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+  .predict-section-title {
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem;
+    color: var(--cream); line-height: 1.25; margin-bottom: 0.3rem;
+  }
+  .predict-section-title span { color: var(--gold); }
+  .predict-section-sub {
+    font-size: 0.62rem; color: var(--muted); line-height: 1.6;
+  }
+  .btn-predict {
+    background: var(--gold); color: var(--dark); padding: 0.75rem 1.75rem;
+    font-family: 'Space Mono', monospace; font-weight: 700; font-size: 0.72rem;
+    letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none;
+    border: none; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    transition: background 0.2s, transform 0.15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-predict:hover { background: var(--orange); color: #fff; transform: translateY(-2px); }
+  @media (max-width: 640px) {
+    .predict-section { flex-direction: column; align-items: flex-start; }
+    .btn-predict { width: 100%; justify-content: center; }
+  }
+
   .stats-bar {
     display: flex; border: 1px solid var(--border);
     background: rgba(26,26,24,0.8); width: 100%; max-width: 740px; position: relative;
@@ -405,6 +449,14 @@
     <li><a href="#tokenomics-section">Tokenomics</a></li>
     <li><a href="#roadmap-section">Roadmap</a></li>
     <li><a href="#zealy-section"><span class="t t-es">Misiones</span><span class="t t-en">Missions</span></a></li>
+    <li>
+      <a href="https://tokenosatoshi.github.io/Osatoshi/predict/" target="_blank" rel="noopener"
+         style="color:var(--gold);text-decoration:none;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(247,201,72,.3);padding:3px 10px;transition:background .2s,border-color .2s"
+         onmouseover="this.style.background='rgba(247,201,72,.1)';this.style.borderColor='var(--gold)'"
+         onmouseout="this.style.background='transparent';this.style.borderColor='rgba(247,201,72,.3)'">
+        🔮 Predict
+      </a>
+    </li>
     <li><a href="#buy-section"><span class="t t-es">Comprar</span><span class="t t-en">Buy</span></a></li>
     <li><a href="#transparency-section"><span class="t t-es">Transparencia</span><span class="t t-en">Transparency</span></a></li>
     <li>
@@ -446,6 +498,27 @@
     </a>
     <a href="https://jup.ag/?buy=6wKTvYqMggUVBcyecUxTSg5qG4aqNu7NpJqkAADKKnyr" target="_blank" class="btn-secondary">
       <span class="t t-es">Comprar en Jupiter</span><span class="t t-en">Buy on Jupiter</span>
+    </a>
+  </div>
+
+  <!-- PREDICT BANNER -->
+  <div class="predict-section fade-in">
+    <div class="predict-section-left">
+      <div class="predict-section-tag">
+        <div class="predict-live-dot"></div>
+        🔮 $OTI Predict — <span class="t t-es">¡Nuevo!</span><span class="t t-en">New!</span>
+      </div>
+      <div class="predict-section-title">
+        <span class="t t-es">¿Puedes predecir el mercado? <span>Gana $OTI</span></span>
+        <span class="t t-en">Can you predict the market? <span>Win $OTI</span></span>
+      </div>
+      <div class="predict-section-sub">
+        <span class="t t-es">Participa en pronósticos cripto, gana tokens $OTI y compite en el ranking. Sorteos verificables on-chain.</span>
+        <span class="t t-en">Join crypto predictions, earn $OTI tokens and compete on the leaderboard. Verifiable on-chain draws.</span>
+      </div>
+    </div>
+    <a href="https://tokenosatoshi.github.io/Osatoshi/predict/" target="_blank" rel="noopener" class="btn-predict">
+      <span class="t t-es">Participar ahora</span><span class="t t-en">Join now</span> →
     </a>
   </div>
 
