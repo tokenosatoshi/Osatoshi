@@ -300,6 +300,21 @@ async function initDB() {
   showLoader(false);
 }
 
+async function autoCleanResolved(){
+  const LIMIT = 48 * 60 * 60 * 1000; // 48 horas en ms
+  const now = Date.now();
+  const before = STATE.preds.length;
+  STATE.preds = STATE.preds.filter(p => {
+    if(p.status !== 'resolved') return true;
+    if(!p.resolvedAt) return true; // sin timestamp → conservar
+    return (now - new Date(p.resolvedAt).getTime()) < LIMIT;
+  });
+  if(STATE.preds.length < before){
+    await saveToCloud();
+    renderAll();
+  }
+}
+
 async function syncFromCloud() {
   const data = await jbGet();
   if (data) {
@@ -412,7 +427,7 @@ async function createPred(){
 /* ═══ RESOLVE PREDICTION ═══ */
 async function resolvePred(id, winner){
   const pred=STATE.preds.find(p=>p.id===id);if(!pred)return;
-  pred.status='resolved';pred.winner=winner;
+  pred.status='resolved';pred.winner=winner;pred.resolvedAt=new Date().toISOString();
   const seed=gSeed(pred);pred.drawSeed=seed;
   const correct=Object.keys(STATE.votes).filter(w=>STATE.votes[w][id]&&STATE.votes[w][id].choice===winner);
   let winners=[];
@@ -614,12 +629,12 @@ function renderAList(){
 try{const dl=document.getElementById('fd');if(dl){const d=new Date();d.setDate(d.getDate()+7);dl.value=d.toISOString().slice(0,16);}}catch(e){}
 
 /* Auto-sync cada 30 segundos */
-setInterval(async()=>{ await syncFromCloud(); }, 30000);
+setInterval(async()=>{ await syncFromCloud(); await autoCleanResolved(); }, 30000);
 
 /* Arranque — checkAdminURL al final garantiza que el DOM está listo */
 window.addEventListener('load', ()=>{
   checkAdminURL();
-  initDB();
+  initDB().then(()=>autoCleanResolved());
 });
 </script>
 </body>
