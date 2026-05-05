@@ -579,7 +579,33 @@ function renderAList(){
     const acts=p.status==='open'
       ?`<select class="pmr-sel" id="rs${p.id}">${p.opts.map(o=>`<option value="${o}">${o}</option>`).join('')}</select><button class="pmr-btn res" onclick="resolvePred(${p.id},document.getElementById('rs${p.id}').value)">${isEs()?'Resolver':'Resolve'}</button>`
       :`<span style="font-size:.62rem;color:var(--green)">✓ ${isEs()?'Ganó':'Winner'}: ${p.winner} · ${p.winners.length} ${isEs()?'ganadores':'winners'}</span>`;
-    div.innerHTML=`<div class="pmr-q">${p.q}</div><div class="pmr-meta">${p.opts.join(' · ')} | ${p.reward.toLocaleString()} $OTI | ${p.wc} ${isEs()?'ganadores':'winners'} | ${isEs()?'Método':'Method'}: ${p.method} | ${tv} ${isEs()?'votos':'votes'}</div><div class="pmr-acts">${acts}<button class="pmr-btn del" onclick="deletePred(${p.id})">${isEs()?'Eliminar':'Delete'}</button></div>`;
+
+    // Build winner wallets section for admin (full addresses)
+    let winnersAdminHTML = '';
+    if(p.status==='resolved' && p.winners && p.winners.length > 0){
+      const pe = p.prizeEach || Math.floor(p.reward / p.winners.length);
+      const wRows = p.winners.map((wa,i)=>{
+        const d = STATE.lb[wa];
+        const alias = d && d.alias ? d.alias : '—';
+        const copyBtn = `<button onclick="navigator.clipboard.writeText('${wa}').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='Copiar',1500)})" style="background:none;border:1px solid rgba(74,222,128,.3);color:var(--green);padding:1px 7px;font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;flex-shrink:0">Copiar</button>`;
+        return `<div style="padding:.5rem 0;border-bottom:1px solid rgba(74,222,128,.1);font-size:.6rem;line-height:1.7">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+            <span style="color:var(--gold);font-weight:700">${['🥇','🥈','🥉'][i]||'🏅'} ${alias}</span>
+            <span style="color:var(--muted)">· ${pe.toLocaleString()} $OTI</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="color:var(--cream);word-break:break-all;flex:1;font-size:.58rem">${wa}</span>
+            ${copyBtn}
+          </div>
+        </div>`;
+      }).join('');
+      winnersAdminHTML = `<div style="margin-top:.6rem;padding:.6rem .75rem;background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.2)">
+        <div style="font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:.35rem">📋 ${isEs()?'Billeteras ganadores (admin)':'Winner wallets (admin)'}</div>
+        ${wRows}
+      </div>`;
+    }
+
+    div.innerHTML=`<div class="pmr-q">${p.q}</div><div class="pmr-meta">${p.opts.join(' · ')} | ${p.reward.toLocaleString()} $OTI | ${p.wc} ${isEs()?'ganadores':'winners'} | ${isEs()?'Método':'Method'}: ${p.method} | ${tv} ${isEs()?'votos':'votes'}</div><div class="pmr-acts">${acts}<button class="pmr-btn del" onclick="deletePred(${p.id})">${isEs()?'Eliminar':'Delete'}</button></div>${winnersAdminHTML}`;
     c.appendChild(div);
   });
 }
