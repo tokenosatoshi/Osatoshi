@@ -321,6 +321,21 @@ async function syncFromCloud() {
     STATE.preds = data.preds || [];
     STATE.votes = data.votes || {};
     STATE.lb    = data.lb    || {};
+
+    /* Recalcular contadores de votos desde STATE.votes
+       para garantizar consistencia total */
+    STATE.preds.forEach(pred => {
+      const recalc = {};
+      pred.opts.forEach(o => recalc[o] = 0);
+      Object.keys(STATE.votes).forEach(wallet => {
+        const v = STATE.votes[wallet][pred.id];
+        if(v && recalc[v.choice] !== undefined) recalc[v.choice]++;
+      });
+      /* Solo actualizar si hay diferencia para evitar pérdida de datos */
+      const oldTotal = Object.values(pred.votes||{}).reduce((a,b)=>a+b,0);
+      const newTotal = Object.values(recalc).reduce((a,b)=>a+b,0);
+      if(newTotal >= oldTotal) pred.votes = recalc;
+    });
   }
   renderAll();
   renderW();
@@ -462,13 +477,59 @@ async function submitV(id){
   if(hasVoted(id)){alert(isEs()?'Ya participaste en este pronóstico.':'You already participated in this prediction.');return;}
   const pred=STATE.preds.find(p=>p.id===id);if(!pred||pred.status!=='open')return;
   const now=new Date();if(pred.dl&&new Date(pred.dl)<now){alert(isEs()?'Este pronóstico ya cerró.':'This prediction is already closed.');return;}
-  pred.votes[c]=(pred.votes[c]||0)+1;
+
+  showLoader(true);
+
+  /* ── Fetch datos frescos de la nube antes de guardar ──
+     Esto evita que un voto sobreescriba el de otro usuario */
+  const fresh = await jbGet();
+  if(fresh){
+    /* Mergear votos frescos en STATE */
+    const freshVotes = fresh.votes || {};
+    Object.keys(freshVotes).forEach(wallet => {
+      if(!STATE.votes[wallet]) STATE.votes[wallet] = {};
+      Object.assign(STATE.votes[wallet], freshVotes[wallet]);
+    });
+    /* Mergear contadores de votos en los preds */
+    const freshPreds = fresh.preds || [];
+    freshPreds.forEach(fp => {
+      const sp = STATE.preds.find(p => p.id === fp.id);
+      if(sp){
+        /* Recalcular votos desde STATE.votes para consistencia */
+        sp.votes = {};
+        sp.opts.forEach(o => sp.votes[o] = 0);
+        Object.keys(STATE.votes).forEach(wallet => {
+          const v = STATE.votes[wallet][fp.id];
+          if(v && sp.votes[v.choice] !== undefined) sp.votes[v.choice]++;
+        });
+      }
+    });
+  }
+
+  /* Verificar de nuevo que no haya votado (por si acaso) */
+  if(STATE.votes[w]&&STATE.votes[w][id]){
+    showLoader(false);
+    alert(isEs()?'Ya participaste en este pronóstico.':'You already participated in this prediction.');
+    return;
+  }
+
+  /* Registrar el voto */
+  const predFinal=STATE.preds.find(p=>p.id===id);
+  if(predFinal){
+    predFinal.votes[c]=(predFinal.votes[c]||0)+1;
+  }
   if(!STATE.votes[w])STATE.votes[w]={};
   STATE.votes[w][id]={choice:c,alias:mA(),ts:new Date().toISOString()};
-  showLoader(true);
+
   await saveToCloud();
   showLoader(false);
   renderAll();
+  renderAListIfOpen();
+}
+
+/* Actualiza admin list si está abierto */
+function renderAListIfOpen(){
+  if(document.getElementById('adminPnl').classList.contains('on')) renderAList();
 }
 
 /* ═══ NOTIFICATIONS ═══ */
