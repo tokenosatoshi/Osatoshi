@@ -300,30 +300,55 @@ async function initDB() {
   showLoader(false);
 }
 
-async function autoCleanResolved(){
-  const LIMIT = 48 * 60 * 60 * 1000; // 48 horas en ms
-  const now = Date.now();
-  const before = STATE.preds.length;
-  STATE.preds = STATE.preds.filter(p => {
-    if(p.status !== 'resolved') return true;
-    if(!p.resolvedAt) return true; // sin timestamp → conservar
-    return (now - new Date(p.resolvedAt).getTime()) < LIMIT;
-  });
-  if(STATE.preds.length < before){
-    await saveToCloud();
-    renderAll();
-  }
-}
-
 async function syncFromCloud() {
   const data = await jbGet();
   if (data) {
-    STATE.preds = data.preds || [];
-    STATE.votes = data.votes || {};
-    STATE.lb    = data.lb    || {};
+    const cloudPreds = data.preds || [];
+    const cloudVotes = data.votes || {};
+    const cloudLb = data.lb || {};
 
-    /* Recalcular contadores de votos desde STATE.votes
-       para garantizar consistencia total */
+    /* Merge predicciones — nunca eliminar, solo añadir o actualizar */
+    cloudPreds.forEach(cp => {
+      const existing = STATE.preds.find(p => p.id === cp.id);
+      if(!existing){
+        STATE.preds.push(cp);
+      } else {
+        /* Actualizar campos críticos si la nube tiene versión más actualizada */
+        if(cp.status === 'resolved'){
+          existing.status = cp.status;
+          existing.winner = cp.winner;
+          existing.winners = cp.winners;
+          existing.prizeEach = cp.prizeEach;
+          existing.drawSeed = cp.drawSeed;
+        }
+        /* Conservar opciones y configuración original */
+        if(!existing.opts || existing.opts.length === 0) existing.opts = cp.opts;
+      }
+    });
+
+    /* Predicciones del STATE que no están en la nube — mantenerlas */
+    /* (no eliminar nada del STATE local) */
+
+    /* Si STATE está vacío, cargar todo desde la nube */
+    if(STATE.preds.length === 0) STATE.preds = cloudPreds;
+
+    /* Merge votos */
+    Object.keys(cloudVotes).forEach(wallet => {
+      if(!STATE.votes[wallet]) STATE.votes[wallet] = {};
+      Object.assign(STATE.votes[wallet], cloudVotes[wallet]);
+    });
+
+    /* Merge leaderboard */
+    Object.keys(cloudLb).forEach(wallet => {
+      if(!STATE.lb[wallet]){
+        STATE.lb[wallet] = cloudLb[wallet];
+      } else {
+        /* Conservar el mayor valor de OTI ganados */
+        if(cloudLb[wallet].oti > STATE.lb[wallet].oti) STATE.lb[wallet] = cloudLb[wallet];
+      }
+    });
+
+    /* Recalcular contadores de votos para consistencia */
     STATE.preds.forEach(pred => {
       const recalc = {};
       pred.opts.forEach(o => recalc[o] = 0);
@@ -331,10 +356,7 @@ async function syncFromCloud() {
         const v = STATE.votes[wallet][pred.id];
         if(v && recalc[v.choice] !== undefined) recalc[v.choice]++;
       });
-      /* Solo actualizar si hay diferencia para evitar pérdida de datos */
-      const oldTotal = Object.values(pred.votes||{}).reduce((a,b)=>a+b,0);
-      const newTotal = Object.values(recalc).reduce((a,b)=>a+b,0);
-      if(newTotal >= oldTotal) pred.votes = recalc;
+      pred.votes = recalc;
     });
   }
   renderAll();
@@ -480,29 +502,58 @@ async function submitV(id){
 
   showLoader(true);
 
-  /* ── Fetch datos frescos de la nube antes de guardar ──
-     Esto evita que un voto sobreescriba el de otro usuario */
+  /* ── Fetch datos frescos COMPLETOS antes de guardar ──
+     Esto garantiza que no se pierda ninguna predicción existente */
   const fresh = await jbGet();
   if(fresh){
-    /* Mergear votos frescos en STATE */
+    const freshPreds = fresh.preds || [];
     const freshVotes = fresh.votes || {};
+
+    /* PASO 1: Traer predicciones de la nube que no están en STATE local */
+    freshPreds.forEach(fp => {
+      const exists = STATE.preds.find(p => p.id === fp.id);
+      if(!exists){
+        /* Predicción nueva en la nube — añadirla al STATE local */
+        STATE.preds.push(fp);
+      }
+    });
+
+    /* PASO 2: Actualizar predicciones existentes con datos frescos de la nube */
+    STATE.preds.forEach(sp => {
+      const fp = freshPreds.find(p => p.id === sp.id);
+      if(fp){
+        /* Conservar el estado más actualizado — si ya está resuelta en la nube, respetar eso */
+        if(fp.status === 'resolved' && sp.status === 'open'){
+          sp.status = fp.status;
+          sp.winner = fp.winner;
+          sp.winners = fp.winners;
+          sp.prizeEach = fp.prizeEach;
+          sp.drawSeed = fp.drawSeed;
+        }
+      }
+    });
+
+    /* PASO 3: Mergear votos frescos sin perder ninguno */
     Object.keys(freshVotes).forEach(wallet => {
       if(!STATE.votes[wallet]) STATE.votes[wallet] = {};
       Object.assign(STATE.votes[wallet], freshVotes[wallet]);
     });
-    /* Mergear contadores de votos en los preds */
-    const freshPreds = fresh.preds || [];
-    freshPreds.forEach(fp => {
-      const sp = STATE.preds.find(p => p.id === fp.id);
-      if(sp){
-        /* Recalcular votos desde STATE.votes para consistencia */
-        sp.votes = {};
-        sp.opts.forEach(o => sp.votes[o] = 0);
-        Object.keys(STATE.votes).forEach(wallet => {
-          const v = STATE.votes[wallet][fp.id];
-          if(v && sp.votes[v.choice] !== undefined) sp.votes[v.choice]++;
-        });
-      }
+
+    /* PASO 4: Recalcular contadores de votos para consistencia */
+    STATE.preds.forEach(sp => {
+      const recalc = {};
+      sp.opts.forEach(o => recalc[o] = 0);
+      Object.keys(STATE.votes).forEach(wallet => {
+        const v = STATE.votes[wallet][sp.id];
+        if(v && recalc[v.choice] !== undefined) recalc[v.choice]++;
+      });
+      sp.votes = recalc;
+    });
+
+    /* PASO 5: Mergear leaderboard */
+    const freshLb = fresh.lb || {};
+    Object.keys(freshLb).forEach(wallet => {
+      if(!STATE.lb[wallet]) STATE.lb[wallet] = freshLb[wallet];
     });
   }
 
@@ -735,12 +786,12 @@ function renderAList(){
 try{const dl=document.getElementById('fd');if(dl){const d=new Date();d.setDate(d.getDate()+7);dl.value=d.toISOString().slice(0,16);}}catch(e){}
 
 /* Auto-sync cada 30 segundos */
-setInterval(async()=>{ await syncFromCloud(); await autoCleanResolved(); }, 30000);
+setInterval(async()=>{ await syncFromCloud(); }, 30000);
 
 /* Arranque — checkAdminURL al final garantiza que el DOM está listo */
 window.addEventListener('load', ()=>{
   checkAdminURL();
-  initDB().then(()=>autoCleanResolved());
+  initDB();
 });
 </script>
 </body>
