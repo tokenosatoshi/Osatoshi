@@ -314,15 +314,21 @@ function fbListen() {
   onValue(ref(db, 'otipredict'), (snap) => {
     if(snap.exists()){
       const data = snap.val();
-      /* Convertir objeto de preds de vuelta a array ordenado por fecha */
-      const predsRaw = data.preds || {};
-      STATE.preds = Object.values(predsRaw).sort((a,b) => b.id - a.id);
+      const predsRaw = data.preds;
+      if(predsRaw && typeof predsRaw === 'object'){
+        STATE.preds = Object.values(predsRaw)
+          .filter(p => p && p.id)
+          .sort((a,b) => b.id - a.id);
+      } else {
+        STATE.preds = [];
+      }
       STATE.votes = data.votes || {};
       STATE.lb    = data.lb    || {};
       recalcVotes();
       renderAll();
       renderW();
       checkNotif();
+      if(document.getElementById('adminPnl').classList.contains('on')) renderAList();
     }
   });
 }
@@ -358,18 +364,27 @@ async function saveToCloud() {
 
 async function initDB() {
   showLoader(true);
-  const data = await fbGet();
-  if(data){
-    STATE.preds = data.preds; /* ya viene convertido desde fbGet */
-    STATE.votes = data.votes;
-    STATE.lb    = data.lb;
-    recalcVotes();
-  }
+  try {
+    const snap = await get(ref(db, 'otipredict'));
+    if(snap.exists()){
+      const data = snap.val();
+      const predsRaw = data.preds;
+      if(predsRaw && typeof predsRaw === 'object'){
+        STATE.preds = Object.values(predsRaw)
+          .filter(p => p && p.id)
+          .sort((a,b) => b.id - a.id);
+      } else {
+        STATE.preds = [];
+      }
+      STATE.votes = data.votes || {};
+      STATE.lb    = data.lb    || {};
+      recalcVotes();
+    }
+  } catch(e){ console.error('initDB error', e); }
   showLoader(false);
   renderAll();
   renderW();
   checkNotif();
-  /* Escucha cambios en tiempo real */
   fbListen();
 }
 
@@ -448,11 +463,16 @@ async function createPred(){
   const pred={id:Date.now(),q,qe:qe||q,opts,dl,reward,wc,method,cat,status:'open',winner:null,winners:[],drawSeed:'',prizeEach:0,created:new Date().toISOString(),votes:{}};
   opts.forEach(o=>pred.votes[o]=0);
   showLoader(true);
-  /* Guardar SOLO esta predicción en Firebase — no toca las demás */
-  await fbSavePred(pred);
+  try {
+    /* Guardar directamente en la ruta de Firebase para esta predicción */
+    await set(ref(db, 'otipredict/preds/' + pred.id), pred);
+    ['fq','fqe','o1','o2','o3','o4','fr','fw'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    showM('cMsg');
+  } catch(e){
+    console.error('createPred error', e);
+    alert(isEs()?'Error al guardar. Intenta de nuevo.':'Error saving. Please try again.');
+  }
   showLoader(false);
-  ['fq','fqe','o1','o2','o3','o4','fr','fw'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  showM('cMsg');
 }
 window.createPred=createPred;
 
