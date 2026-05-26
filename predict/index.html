@@ -230,7 +230,8 @@ textarea.finput{resize:vertical;min-height:60px}
    FIREBASE CONFIG
    ═══════════════════════════════════════ */
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getDatabase, ref, set, get, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+/* ═══ FIREBASE API ═══ */
+import { getDatabase, ref, set, get, onValue, update } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyD6mUOT-60oBr6Zv8fQG6DE7S-xV5h9Pdg",
@@ -275,8 +276,6 @@ async function fbGet() {
 
 async function fbSet(data) {
   try {
-    /* Convertir array de preds a objeto con id como clave
-       para que Firebase lo maneje correctamente */
     const predsObj = {};
     data.preds.forEach(p => { predsObj[p.id] = p; });
     await set(ref(db, 'otipredict'), {
@@ -285,6 +284,30 @@ async function fbSet(data) {
       lb:    data.lb    || {}
     });
   } catch(e) { console.error('fbSet error', e); }
+}
+
+/* Guarda una sola predicción sin tocar las demás */
+async function fbSavePred(pred) {
+  try {
+    await set(ref(db, 'otipredict/preds/' + pred.id), pred);
+  } catch(e) { console.error('fbSavePred error', e); }
+}
+
+/* Elimina una predicción */
+async function fbDeletePred(id) {
+  try {
+    await set(ref(db, 'otipredict/preds/' + id), null);
+  } catch(e) { console.error('fbDeletePred error', e); }
+}
+
+/* Guarda votos y leaderboard sin tocar predicciones */
+async function fbSaveVotesAndLB() {
+  try {
+    await update(ref(db, 'otipredict'), {
+      votes: STATE.votes,
+      lb: STATE.lb
+    });
+  } catch(e) { console.error('fbSaveVotesAndLB error', e); }
 }
 
 function fbListen() {
@@ -424,10 +447,12 @@ async function createPred(){
   if(!q||opts.length<2){alert(isEs()?'Completa la pregunta y al menos 2 opciones':'Fill in question and at least 2 options');return;}
   const pred={id:Date.now(),q,qe:qe||q,opts,dl,reward,wc,method,cat,status:'open',winner:null,winners:[],drawSeed:'',prizeEach:0,created:new Date().toISOString(),votes:{}};
   opts.forEach(o=>pred.votes[o]=0);
-  STATE.preds.unshift(pred);
-  await saveToCloud();
+  showLoader(true);
+  /* Guardar SOLO esta predicción en Firebase — no toca las demás */
+  await fbSavePred(pred);
+  showLoader(false);
   ['fq','fqe','o1','o2','o3','o4','fr','fw'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  showM('cMsg');renderAList();renderAll();
+  showM('cMsg');
 }
 window.createPred=createPred;
 
@@ -446,16 +471,20 @@ async function resolvePred(id,winner){
   correct.forEach(w=>{if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:''};STATE.lb[w].total++;STATE.lb[w].alias=STATE.votes[w][id].alias||STATE.lb[w].alias;});
   winners.forEach(w=>{if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:''};STATE.lb[w].wins++;STATE.lb[w].oti+=pred.prizeEach;});
   Object.keys(STATE.votes).forEach(w=>{if(STATE.votes[w][id]&&!correct.includes(w)){if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:''};STATE.lb[w].total++;}});
-  await saveToCloud();
-  renderAList();renderAll();checkNotif();
+  showLoader(true);
+  /* Guardar predicción resuelta y leaderboard por separado */
+  await fbSavePred(pred);
+  await fbSaveVotesAndLB();
+  showLoader(false);
+  checkNotif();
 }
 window.resolvePred=resolvePred;
 
 async function deletePred(id){
   if(!confirm(isEs()?'¿Eliminar?':'Delete?'))return;
-  STATE.preds=STATE.preds.filter(p=>p.id!==id);
-  await saveToCloud();
-  renderAList();renderAll();
+  showLoader(true);
+  await fbDeletePred(id);
+  showLoader(false);
 }
 window.deletePred=deletePred;
 
@@ -468,11 +497,18 @@ async function submitV(id){
   if(hasVoted(id)){alert(isEs()?'Ya participaste en este pronóstico.':'You already participated in this prediction.');return;}
   const pred=STATE.preds.find(p=>p.id===id);if(!pred||pred.status!=='open')return;
   const now=new Date();if(pred.dl&&new Date(pred.dl)<now){alert(isEs()?'Este pronóstico ya cerró.':'This prediction is already closed.');return;}
-  pred.votes[c]=(pred.votes[c]||0)+1;
+  /* Registrar voto */
   if(!STATE.votes[w])STATE.votes[w]={};
   STATE.votes[w][id]={choice:c,alias:mA(),ts:new Date().toISOString()};
-  await saveToCloud();
-  renderAll();
+  /* Actualizar contador en la predicción */
+  pred.votes[c]=(pred.votes[c]||0)+1;
+  showLoader(true);
+  /* Guardar voto y predicción por separado — no toca otras predicciones */
+  await Promise.all([
+    set(ref(db, 'otipredict/votes/' + w), STATE.votes[w]),
+    fbSavePred(pred)
+  ]);
+  showLoader(false);
 }
 window.submitV=submitV;
 
