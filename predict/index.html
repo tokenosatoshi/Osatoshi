@@ -225,122 +225,106 @@ textarea.finput{resize:vertical;min-height:60px}
   <button class="ni" onclick="goTo('wallet',this)"><span class="ni-icon">👛</span><span class="ni-label"><span class="t t-es">Billetera</span><span class="t t-en">Wallet</span></span></button>
   <button class="ni" onclick="goTo('rank',this)"><span class="ni-icon">🏆</span><span class="ni-label">Ranking</span></button>
 </nav>
-<script>
+<script type="module">
 /* ═══════════════════════════════════════
-   JSONBIN CLOUD CONFIG
+   FIREBASE CONFIG
    ═══════════════════════════════════════ */
-const JBIN_KEY = '$2a$10$LmfpYN2USJwEB5wOLTP.2.hGauJIPlT5VpGB4EYRMxfY9pKhh3bMO';
-const JBIN_URL = 'https://api.jsonbin.io/v3/b';
-let JBIN_ID = '69f7d87faaba882197699df8'; // ID fijo
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, set, get, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
-/* Estado global en memoria */
+const firebaseConfig = {
+  apiKey: "AIzaSyD6mUOT-60oBr6Zv8fQG6DE7S-xV5h9Pdg",
+  authDomain: "osatoshi-predict.firebaseapp.com",
+  databaseURL: "https://osatoshi-predict-default-rtdb.firebaseio.com",
+  projectId: "osatoshi-predict",
+  storageBucket: "osatoshi-predict.firebasestorage.app",
+  messagingSenderId: "100918117849",
+  appId: "1:100918117849:web:e61d61092f0430f14745c8"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+/* Estado global */
 let STATE = { preds: [], votes: {}, lb: {} };
-let loading = false;
 
-/* ═══ JSONBIN API ═══ */
-async function jbGet() {
-  if (!JBIN_ID) return null;
+/* ═══ FIREBASE API ═══ */
+async function fbGet() {
   try {
-    const r = await fetch(`${JBIN_URL}/${JBIN_ID}/latest`, {
-      method: 'GET',
-      headers: {
-        'X-Master-Key': JBIN_KEY,
-        'X-Bin-Meta': 'false'
-      }
-    });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const d = await r.json();
-    return d.record || d || null;
-  } catch(e) { console.error('jbGet error', e); return null; }
+    const snap = await get(ref(db, 'otipredict'));
+    if(snap.exists()) return snap.val();
+    return { preds: [], votes: {}, lb: {} };
+  } catch(e) { console.error('fbGet error', e); return null; }
 }
 
-async function jbSet(data) {
-  if (!JBIN_ID) return;
+async function fbSet(data) {
   try {
-    const r = await fetch(`${JBIN_URL}/${JBIN_ID}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': JBIN_KEY,
-        'X-Bin-Meta': 'false'
-      },
-      body: JSON.stringify(data)
+    await set(ref(db, 'otipredict'), data);
+  } catch(e) { console.error('fbSet error', e); }
+}
+
+function fbListen() {
+  onValue(ref(db, 'otipredict'), (snap) => {
+    if(snap.exists()){
+      const data = snap.val();
+      STATE.preds = data.preds || [];
+      STATE.votes = data.votes || {};
+      STATE.lb    = data.lb    || {};
+      recalcVotes();
+      renderAll();
+      renderW();
+      checkNotif();
+    }
+  });
+}
+
+function recalcVotes() {
+  STATE.preds.forEach(pred => {
+    const recalc = {};
+    pred.opts.forEach(o => recalc[o] = 0);
+    Object.keys(STATE.votes).forEach(wallet => {
+      const v = STATE.votes[wallet][pred.id];
+      if(v && recalc[v.choice] !== undefined) recalc[v.choice]++;
     });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-  } catch(e) { console.error('jbSet error', e); }
-}
-
-async function jbCreate() {
-  try {
-    const r = await fetch(JBIN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JBIN_KEY, 'X-Bin-Name': 'OTIPredict', 'X-Bin-Private': 'false' },
-      body: JSON.stringify({ preds: [], votes: {}, lb: {} })
-    });
-    const d = await r.json();
-    return d.metadata?.id || null;
-  } catch(e) { console.error('jbCreate error', e); return null; }
-}
-
-async function jbFindBin() {
-  try {
-    const r = await fetch('https://api.jsonbin.io/v3/b?sortBy=createdAt&order=desc', {
-      headers: { 'X-Master-Key': JBIN_KEY }
-    });
-    const d = await r.json();
-    if (d && d.length > 0) return d[0].record?.id || d[0].metadata?.id || null;
-    return null;
-  } catch(e) { return null; }
-}
-
-/* Conecta directo al bin fijo */
-async function initDB() {
-  showLoader(true);
-  await syncFromCloud();
-  showLoader(false);
-}
-
-async function syncFromCloud() {
-  const data = await jbGet();
-  if (data) {
-    /* La nube es siempre la fuente de verdad —
-       reemplazar completamente el STATE con los datos de JSONBin */
-    STATE.preds = data.preds || [];
-    STATE.votes = data.votes || {};
-    STATE.lb    = data.lb    || {};
-
-    /* Recalcular contadores de votos para consistencia */
-    STATE.preds.forEach(pred => {
-      const recalc = {};
-      pred.opts.forEach(o => recalc[o] = 0);
-      Object.keys(STATE.votes).forEach(wallet => {
-        const v = STATE.votes[wallet][pred.id];
-        if(v && recalc[v.choice] !== undefined) recalc[v.choice]++;
-      });
-      pred.votes = recalc;
-    });
-  }
-  renderAll();
-  renderW();
-  checkNotif();
-}
-
-async function saveToCloud() {
-  await jbSet({ preds: STATE.preds, votes: STATE.votes, lb: STATE.lb });
+    pred.votes = recalc;
+  });
 }
 
 function showLoader(on) {
   let el = document.getElementById('globalLoader');
-  if (!el) {
+  if(!el){
     el = document.createElement('div');
     el.id = 'globalLoader';
-    el.style.cssText = 'position:fixed;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#F7C948,#E8641A);z-index:999;transition:opacity .3s';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F7C948,#E8641A);z-index:9999;transition:opacity .3s';
     document.body.appendChild(el);
   }
   el.style.opacity = on ? '1' : '0';
 }
 
-/* ═══ LOCAL (wallet/alias/lang/pass) ═══ */
+async function saveToCloud() {
+  showLoader(true);
+  await fbSet({ preds: STATE.preds, votes: STATE.votes, lb: STATE.lb });
+  showLoader(false);
+}
+
+async function initDB() {
+  showLoader(true);
+  const data = await fbGet();
+  if(data){
+    STATE.preds = data.preds || [];
+    STATE.votes = data.votes || {};
+    STATE.lb    = data.lb    || {};
+    recalcVotes();
+  }
+  showLoader(false);
+  renderAll();
+  renderW();
+  checkNotif();
+  /* Escucha cambios en tiempo real */
+  fbListen();
+}
+
+/* ═══ LOCAL ═══ */
 function gs(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function ss(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 function gPass(){return gs('oti_pass')||'osatoshi2026';}
@@ -362,18 +346,13 @@ try{const s=gs('oti-lang');if(s)setLang(s);}catch(e){}
 function checkAdminURL(){
   const params=new URLSearchParams(window.location.search);
   const btn=document.getElementById('adminBtn');
-  if(!btn) return;
-  if(params.get('admin')==='MikayOsa'){
-    btn.style.display='block';
-  } else {
-    btn.style.display='none';
-  }
+  if(!btn)return;
+  btn.style.display=params.get('admin')==='MikayOsa'?'block':'none';
 }
 
 /* ═══ HELPERS ═══ */
 const CI={btc:'💰',project:'⚡',market:'📈',solana:'🟣',other:'🔮'};
 const MD=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
-
 function showM(id){const m=document.getElementById(id);if(m){m.style.display='block';setTimeout(()=>m.style.display='none',2500);}}
 function hasVoted(predId){const w=mW();if(!w)return false;return STATE.votes[w]&&STATE.votes[w][predId]!==undefined;}
 function seedH(str){let h=0;for(let i=0;i<str.length;i++){h=(Math.imul(31,h)+str.charCodeAt(i))|0;}return Math.abs(h);}
@@ -387,8 +366,8 @@ function goTo(p,btn){
   document.getElementById('pg-'+p).classList.add('on');
   btn.classList.add('on');
   document.getElementById('scrl').scrollTop=0;
-  if(p==='wallet') renderW();
-  if(p==='rank') renderLB();
+  if(p==='wallet')renderW();
+  if(p==='rank')renderLB();
 }
 
 /* ═══ ADMIN ═══ */
@@ -400,6 +379,11 @@ function openAdmin(){document.getElementById('adminPnl').classList.add('on');ren
 function closeAdmin(){document.getElementById('adminPnl').classList.remove('on');}
 function logoutAdmin(){closeAdmin();window.location.href=window.location.pathname;}
 function changeP(){const v=document.getElementById('npInp').value.trim();if(!v)return;ss('oti_pass',v);document.getElementById('npInp').value='';showM('pMsg');}
+
+/* Make functions global for onclick handlers */
+window.goTo=goTo;window.openP=openP;window.closeP=closeP;window.checkP=checkP;
+window.openAdmin=openAdmin;window.closeAdmin=closeAdmin;window.logoutAdmin=logoutAdmin;
+window.changeP=changeP;window.setLang=setLang;
 
 /* ═══ CREATE PREDICTION ═══ */
 async function createPred(){
@@ -415,44 +399,42 @@ async function createPred(){
   const pred={id:Date.now(),q,qe:qe||q,opts,dl,reward,wc,method,cat,status:'open',winner:null,winners:[],drawSeed:'',prizeEach:0,created:new Date().toISOString(),votes:{}};
   opts.forEach(o=>pred.votes[o]=0);
   STATE.preds.unshift(pred);
-  showLoader(true);
   await saveToCloud();
-  showLoader(false);
   ['fq','fqe','o1','o2','o3','o4','fr','fw'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   showM('cMsg');renderAList();renderAll();
 }
+window.createPred=createPred;
 
-/* ═══ RESOLVE PREDICTION ═══ */
-async function resolvePred(id, winner){
+/* ═══ RESOLVE ═══ */
+async function resolvePred(id,winner){
   const pred=STATE.preds.find(p=>p.id===id);if(!pred)return;
   pred.status='resolved';pred.winner=winner;pred.resolvedAt=new Date().toISOString();
   const seed=gSeed(pred);pred.drawSeed=seed;
   const correct=Object.keys(STATE.votes).filter(w=>STATE.votes[w][id]&&STATE.votes[w][id].choice===winner);
   let winners=[];
-  if(pred.method==='all') winners=correct;
-  else if(pred.method==='first') winners=correct.slice(0,pred.wc);
+  if(pred.method==='all')winners=correct;
+  else if(pred.method==='first')winners=correct.slice(0,pred.wc);
   else winners=drawW(correct,pred.wc,seed);
   pred.winners=winners;
   pred.prizeEach=winners.length>0?Math.floor(pred.reward/winners.length):0;
   correct.forEach(w=>{if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:''};STATE.lb[w].total++;STATE.lb[w].alias=STATE.votes[w][id].alias||STATE.lb[w].alias;});
-  winners.forEach(w=>{if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:''};STATE.lb[w].wins++;STATE.lb[w].oti+=pred.prizeEach;STATE.lb[w].alias=STATE.votes[w]&&STATE.votes[w][id]?STATE.votes[w][id].alias||STATE.lb[w].alias:STATE.lb[w].alias;});
+  winners.forEach(w=>{if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:''};STATE.lb[w].wins++;STATE.lb[w].oti+=pred.prizeEach;});
   Object.keys(STATE.votes).forEach(w=>{if(STATE.votes[w][id]&&!correct.includes(w)){if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:''};STATE.lb[w].total++;}});
-  showLoader(true);
   await saveToCloud();
-  showLoader(false);
   renderAList();renderAll();checkNotif();
 }
+window.resolvePred=resolvePred;
 
 async function deletePred(id){
   if(!confirm(isEs()?'¿Eliminar?':'Delete?'))return;
   STATE.preds=STATE.preds.filter(p=>p.id!==id);
-  showLoader(true);
   await saveToCloud();
-  showLoader(false);
   renderAList();renderAll();
 }
+window.deletePred=deletePred;
 
 /* ═══ VOTE ═══ */
+const selO={};
 async function submitV(id){
   const c=selO[id];if(!c)return;
   const w=mW();
@@ -460,52 +442,21 @@ async function submitV(id){
   if(hasVoted(id)){alert(isEs()?'Ya participaste en este pronóstico.':'You already participated in this prediction.');return;}
   const pred=STATE.preds.find(p=>p.id===id);if(!pred||pred.status!=='open')return;
   const now=new Date();if(pred.dl&&new Date(pred.dl)<now){alert(isEs()?'Este pronóstico ya cerró.':'This prediction is already closed.');return;}
-
-  showLoader(true);
-
-  /* Fetch datos frescos y usar la nube como fuente de verdad */
-  const fresh = await jbGet();
-  if(fresh){
-    /* Reemplazar STATE con datos frescos de la nube */
-    STATE.preds = fresh.preds || STATE.preds;
-    /* Merge votos — añadir los de la nube sin perder los locales */
-    const freshVotes = fresh.votes || {};
-    Object.keys(freshVotes).forEach(wallet => {
-      if(!STATE.votes[wallet]) STATE.votes[wallet] = {};
-      Object.assign(STATE.votes[wallet], freshVotes[wallet]);
-    });
-    /* Merge leaderboard */
-    const freshLb = fresh.lb || {};
-    Object.keys(freshLb).forEach(wallet => {
-      if(!STATE.lb[wallet]) STATE.lb[wallet] = freshLb[wallet];
-    });
-  }
-
-  /* Verificar de nuevo que no haya votado después del merge */
-  if(STATE.votes[w]&&STATE.votes[w][id]){
-    showLoader(false);
-    alert(isEs()?'Ya participaste en este pronóstico.':'You already participated in this prediction.');
-    return;
-  }
-
-  /* Registrar el voto */
-  const predFinal=STATE.preds.find(p=>p.id===id);
-  if(predFinal){
-    predFinal.votes[c]=(predFinal.votes[c]||0)+1;
-  }
+  pred.votes[c]=(pred.votes[c]||0)+1;
   if(!STATE.votes[w])STATE.votes[w]={};
   STATE.votes[w][id]={choice:c,alias:mA(),ts:new Date().toISOString()};
-
   await saveToCloud();
-  showLoader(false);
   renderAll();
-  renderAListIfOpen();
 }
+window.submitV=submitV;
 
-/* Actualiza admin list si está abierto */
-function renderAListIfOpen(){
-  if(document.getElementById('adminPnl').classList.contains('on')) renderAList();
+function selOpt(id,opt,btn){
+  selO[id]=opt;
+  btn.closest('.opts-grid').querySelectorAll('.opt-btn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  const s=document.getElementById('sub'+id);if(s)s.disabled=false;
 }
+window.selOpt=selOpt;
 
 /* ═══ NOTIFICATIONS ═══ */
 function checkNotif(){
@@ -517,12 +468,11 @@ function checkNotif(){
 }
 
 /* ═══ RENDER PREDICTION CARD ═══ */
-const selO={};
-function renderPCard(pred, container){
+function renderPCard(pred,container){
   const w=mW();const myV=w&&STATE.votes[w]?STATE.votes[w][pred.id]:null;
   const now=new Date();const dlP=pred.dl&&new Date(pred.dl)<now;
   const isOpen=pred.status==='open'&&!dlP;
-  const total=Object.values(pred.votes).reduce((a,b)=>a+b,0);
+  const total=Object.values(pred.votes||{}).reduce((a,b)=>a+b,0);
   const q=isEs()?pred.q:pred.qe;
   const sc=pred.status==='resolved'?'resolved':isOpen?'open':'closed';
   const bt=pred.status==='resolved'?(isEs()?'Resuelto':'Resolved'):isOpen?(isEs()?'Abierto':'Open'):(isEs()?'Cerrado':'Closed');
@@ -531,7 +481,7 @@ function renderPCard(pred, container){
   if(isOpen&&pred.dl){const ms=new Date(pred.dl)-now;const h=Math.floor(ms/3600000);const m=Math.floor((ms%3600000)/60000);tLeft=h>24?Math.floor(h/24)+'d '+h%24+'h':h+'h '+m+'m';}
   let opH='';
   pred.opts.forEach(opt=>{
-    const cnt=pred.votes[opt]||0;const pct=total>0?Math.round(cnt/total*100):0;
+    const cnt=(pred.votes&&pred.votes[opt])||0;const pct=total>0?Math.round(cnt/total*100):0;
     const iW=pred.status==='resolved'&&pred.winner===opt;const iL=pred.status==='resolved'&&pred.winner&&pred.winner!==opt;const iS=myV&&myV.choice===opt;
     opH+=`<div><button class="opt-btn${iS?' sel':''}${iW?' winner':''}${iL?' loser':''}" onclick="selOpt(${pred.id},'${opt.replace(/'/g,"\\'")}',this)" ${!isOpen||myV?'disabled':''}>${iW?'✓ ':''}${opt}</button><div class="vbar"><div class="vfill" style="width:${pct}%"></div></div><div class="vpct">${pct}% · ${cnt} ${isEs()?'votos':'votes'}</div></div>`;
   });
@@ -540,27 +490,25 @@ function renderPCard(pred, container){
     const pe=pred.prizeEach||0;
     const rows=pred.winners.map((wa,i)=>{const d=STATE.lb[wa];const name=d&&d.alias?d.alias:wa.slice(0,8)+'...'+wa.slice(-6);const isMe=w&&wa===w;return`<div class="winner-row"><div class="wmedal">${MD[i]||'🏅'}</div><div class="waddr">${name}${isMe?'<span class="wyou">'+(isEs()?'(Tú)':'(You)')+'</span>':''}</div><div class="wprize">${pe.toLocaleString()} $OTI</div></div>`;}).join('');
     const mLabel=pred.method==='all'?(isEs()?'Todos los aciertos':'All correct'):pred.method==='first'?(isEs()?'Primeros votantes':'First voters'):(isEs()?'Sorteo aleatorio':'Random draw');
-    wHTML=`<div class="winners-box"><div class="winners-title">🏆 ${isEs()?'Ganadores':'Winners'} · ${pred.winners.length} ${isEs()?'seleccionados de':'selected from'} ${total} ${isEs()?'participantes':'participants'}</div>${rows}<div class="draw-box"><div class="draw-title">🔒 ${isEs()?'Método':'Method'}: ${mLabel} · ${isEs()?'Premio por ganador':'Per winner'}: ${pe.toLocaleString()} $OTI</div><div class="draw-seed">${isEs()?'Semilla':'Seed'}: ${pred.drawSeed||gSeed(pred)}</div><div class="draw-info">${isEs()?'Algoritmo determinista — reproducible y verificable':'Deterministic algorithm — publicly verifiable'}</div></div></div>`;
+    wHTML=`<div class="winners-box"><div class="winners-title">🏆 ${isEs()?'Ganadores':'Winners'} · ${pred.winners.length} ${isEs()?'seleccionados de':'selected from'} ${total} ${isEs()?'participantes':'participants'}</div>${rows}<div class="draw-box"><div class="draw-title">🔒 ${isEs()?'Método':'Method'}: ${mLabel} · ${isEs()?'Premio por ganador':'Per winner'}: ${pe.toLocaleString()} $OTI</div><div class="draw-seed">${isEs()?'Semilla':'Seed'}: ${pred.drawSeed||''}</div></div></div>`;
   }
   const amW=pred.status==='resolved'&&w&&pred.winners&&pred.winners.includes(w);
   const amC=pred.status==='resolved'&&myV&&myV.choice===pred.winner;
   let botH='';
-  if(isOpen&&!myV) botH=`<button class="pred-sub" id="sub${pred.id}" onclick="submitV(${pred.id})" disabled>${isEs()?'Confirmar pronóstico':'Confirm prediction'}</button>`;
-  else if(myV&&isOpen) botH=`<div class="pred-voted">✓ ${isEs()?'Tu pronóstico':'Your prediction'}: ${myV.choice}</div>`;
-  else if(amW) botH=`<div style="margin-top:.75rem;padding:.75rem;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);font-size:.72rem;color:var(--green);text-align:center;line-height:1.6">🎉 ${isEs()?'¡Ganaste '+(pred.prizeEach||0).toLocaleString()+' $OTI! El admin los enviará a tu billetera.':'You won '+(pred.prizeEach||0).toLocaleString()+' $OTI! The admin will send them to your wallet.'}</div>`;
-  else if(amC&&!amW) botH=`<div style="margin-top:.75rem;padding:.75rem;background:rgba(247,201,72,.05);border:1px solid rgba(247,201,72,.1);font-size:.68rem;color:var(--muted);text-align:center;line-height:1.6">${isEs()?'Acertaste pero no saliste en el sorteo esta vez. ¡Sigue participando!':'You were right but not selected this time. Keep participating!'}</div>`;
+  if(isOpen&&!myV)botH=`<button class="pred-sub" id="sub${pred.id}" onclick="submitV(${pred.id})" disabled>${isEs()?'Confirmar pronóstico':'Confirm prediction'}</button>`;
+  else if(myV&&isOpen)botH=`<div class="pred-voted">✓ ${isEs()?'Tu pronóstico':'Your prediction'}: ${myV.choice}</div>`;
+  else if(amW)botH=`<div style="margin-top:.75rem;padding:.75rem;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);font-size:.72rem;color:var(--green);text-align:center;line-height:1.6">🎉 ${isEs()?'¡Ganaste '+(pred.prizeEach||0).toLocaleString()+' $OTI! El admin los enviará a tu billetera.':'You won '+(pred.prizeEach||0).toLocaleString()+' $OTI! The admin will send them to your wallet.'}</div>`;
+  else if(amC&&!amW)botH=`<div style="margin-top:.75rem;padding:.75rem;background:rgba(247,201,72,.05);border:1px solid rgba(247,201,72,.1);font-size:.68rem;color:var(--muted);text-align:center;line-height:1.6">${isEs()?'Acertaste pero no saliste en el sorteo. ¡Sigue participando!':'You were right but not selected this time. Keep participating!'}</div>`;
   const div=document.createElement('div');div.className='pred-card';
-  div.innerHTML=`<div class="psbar ${sc}"></div><div class="pred-inner"><div class="pred-meta"><span class="pbadge ${sc}">${bt}</span><span class="pred-reward"><b>${pred.reward.toLocaleString()}</b> $OTI</span><span class="pred-winfo">👥 ${pred.wc} ${isEs()?'ganadores':'winners'}</span></div><div class="pred-q">${CI[pred.cat]||'🔮'} ${q}</div>${dlS?`<div class="pred-dl">⏰ ${isEs()?'Cierra':'Closes'}: ${dlS}</div>`:''}${tLeft?`<div class="pred-cd">⏱ ${isEs()?'Tiempo restante':'Time left'}: ${tLeft}</div>`:''}  <div class="opts-grid">${opH}</div>${botH}${wHTML}</div>`;
+  div.innerHTML=`<div class="psbar ${sc}"></div><div class="pred-inner"><div class="pred-meta"><span class="pbadge ${sc}">${bt}</span><span class="pred-reward"><b>${(pred.reward||0).toLocaleString()}</b> $OTI</span><span class="pred-winfo">👥 ${pred.wc} ${isEs()?'ganadores':'winners'}</span></div><div class="pred-q">${CI[pred.cat]||'🔮'} ${q}</div>${dlS?`<div class="pred-dl">⏰ ${isEs()?'Cierra':'Closes'}: ${dlS}</div>`:''}${tLeft?`<div class="pred-cd">⏱ ${isEs()?'Tiempo restante':'Time left'}: ${tLeft}</div>`:''}<div class="opts-grid">${opH}</div>${botH}${wHTML}</div>`;
   container.appendChild(div);
 }
-
-function selOpt(id,opt,btn){selO[id]=opt;btn.closest('.opts-grid').querySelectorAll('.opt-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');const s=document.getElementById('sub'+id);if(s)s.disabled=false;}
 
 /* ═══ RENDER ALL ═══ */
 function renderAll(){
   const open=STATE.preds.filter(p=>p.status==='open');
   const res=STATE.preds.filter(p=>p.status==='resolved').slice(0,5);
-  const totalOTI=open.reduce((a,p)=>a+p.reward,0);
+  const totalOTI=open.reduce((a,p)=>a+(p.reward||0),0);
   document.getElementById('sOpen').textContent=open.length;
   document.getElementById('sOti').textContent=totalOTI.toLocaleString();
   document.getElementById('sUsers').textContent=Object.keys(STATE.votes).length;
@@ -580,11 +528,13 @@ function saveW(){
   ss('oti_wallet',addr);ss('oti_alias',alias);renderW();
 }
 function disconnW(){localStorage.removeItem('oti_wallet');localStorage.removeItem('oti_alias');renderW();}
+window.saveW=saveW;window.disconnW=disconnW;
+
 function renderW(){
   const addr=mW();const alias=mA();
   document.getElementById('wConn').style.display=addr?'block':'none';
   document.getElementById('wForm').style.display=addr?'none':'block';
-  if(addr) document.getElementById('wAddr').textContent=(alias?alias+' — ':'')+addr.slice(0,10)+'...'+addr.slice(-6);
+  if(addr)document.getElementById('wAddr').textContent=(alias?alias+' — ':'')+addr.slice(0,10)+'...'+addr.slice(-6);
   const myV=addr&&STATE.votes[addr]?STATE.votes[addr]:{};
   const h=document.getElementById('myH');const e=document.getElementById('myE');
   const entries=Object.keys(myV).reverse();
@@ -618,6 +568,7 @@ function renderLB(){
     c.appendChild(row);
   });
 }
+window.renderLB=renderLB;
 
 /* ═══ ADMIN LIST ═══ */
 function renderAList(){
@@ -625,13 +576,10 @@ function renderAList(){
   if(!STATE.preds.length){c.innerHTML=`<div style="font-size:.72rem;color:var(--muted);text-align:center;padding:1rem">${isEs()?'No hay pronósticos aún':'No predictions yet'}</div>`;return;}
   c.innerHTML='';
   STATE.preds.forEach(p=>{
-    const tv=Object.values(p.votes).reduce((a,b)=>a+b,0);
+    const tv=Object.values(p.votes||{}).reduce((a,b)=>a+b,0);
     const div=document.createElement('div');div.className='pmr';
-    const acts=p.status==='open'
-      ?`<select class="pmr-sel" id="rs${p.id}">${p.opts.map(o=>`<option value="${o}">${o}</option>`).join('')}</select><button class="pmr-btn res" onclick="resolvePred(${p.id},document.getElementById('rs${p.id}').value)">${isEs()?'Resolver':'Resolve'}</button>`
-      :`<span style="font-size:.62rem;color:var(--green)">✓ ${isEs()?'Ganó':'Winner'}: ${p.winner} · ${p.winners.length} ${isEs()?'ganadores':'winners'}</span>`;
 
-    /* ── VOTOS DETALLADOS por opción ── */
+    /* Votos detallados */
     const votesByOpt={};
     p.opts.forEach(o=>votesByOpt[o]=[]);
     Object.keys(STATE.votes).forEach(wallet=>{
@@ -643,77 +591,34 @@ function renderAList(){
       const voters=votesByOpt[opt]||[];
       const isWin=p.status==='resolved'&&p.winner===opt;
       const voterRows=voters.length
-        ?voters.map((v,i)=>{
-          const short=v.wallet.slice(0,10)+'...'+v.wallet.slice(-6);
-          const ts=v.ts?new Date(v.ts).toLocaleDateString('es-PE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
-          return `<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)">
-            <span style="color:var(--muted);font-size:.55rem;min-width:1rem">${i+1}.</span>
-            <span style="flex:1;color:var(--cream);font-size:.57rem;word-break:break-all">${v.alias!=='—'?`<b style="color:var(--gold)">${v.alias}</b> · `:''}${short}</span>
-            <button onclick="navigator.clipboard.writeText('${v.wallet}').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='📋',1500)})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.7rem;padding:0 2px;flex-shrink:0">📋</button>
-            <span style="color:var(--muted);font-size:.52rem;white-space:nowrap">${ts}</span>
-          </div>`;
-        }).join('')
+        ?voters.map((v,i)=>{const short=v.wallet.slice(0,10)+'...'+v.wallet.slice(-6);const ts=v.ts?new Date(v.ts).toLocaleDateString('es-PE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';return`<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="color:var(--muted);font-size:.55rem;min-width:1rem">${i+1}.</span><span style="flex:1;color:var(--cream);font-size:.57rem;word-break:break-all">${v.alias!=='—'?`<b style="color:var(--gold)">${v.alias}</b> · `:''}${short}</span><button onclick="navigator.clipboard.writeText('${v.wallet}').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='📋',1500)})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.7rem;padding:0 2px;flex-shrink:0">📋</button><span style="color:var(--muted);font-size:.52rem;white-space:nowrap">${ts}</span></div>`;}).join('')
         :`<div style="font-size:.6rem;color:var(--muted);padding:3px 0">${isEs()?'Sin votos':'No votes'}</div>`;
-      return `<div style="margin-bottom:.4rem;padding:.5rem .6rem;background:${isWin?'rgba(74,222,128,.06)':'rgba(255,255,255,.02)'};border:1px solid ${isWin?'rgba(74,222,128,.25)':'rgba(255,255,255,.06)'}">
-        <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
-          <span style="font-size:.65rem;font-weight:700;color:${isWin?'var(--green)':'var(--cream)'}">${isWin?'✓ ':''}"${opt}"</span>
-          <span style="font-size:.62rem;color:var(--gold);font-weight:700">${voters.length} voto${voters.length!==1?'s':''}</span>
-        </div>${voterRows}</div>`;
+      return`<div style="margin-bottom:.4rem;padding:.5rem .6rem;background:${isWin?'rgba(74,222,128,.06)':'rgba(255,255,255,.02)'};border:1px solid ${isWin?'rgba(74,222,128,.25)':'rgba(255,255,255,.06)'}"><div style="display:flex;justify-content:space-between;margin-bottom:.3rem"><span style="font-size:.65rem;font-weight:700;color:${isWin?'var(--green)':'var(--cream)'}">${isWin?'✓ ':''}"${opt}"</span><span style="font-size:.62rem;color:var(--gold);font-weight:700">${voters.length} voto${voters.length!==1?'s':''}</span></div>${voterRows}</div>`;
     }).join('');
 
-    const votesDetailHTML=`<details style="margin-top:.5rem">
-      <summary style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);cursor:pointer;padding:.4rem 0;user-select:none">
-        📊 ${isEs()?'Ver detalle de votos':'View vote detail'} (${totalPart} ${isEs()?'participantes':'participants'}, ${tv} ${isEs()?'votos':'votes'}) ▼
-      </summary>
-      <div style="margin-top:.4rem;padding:.5rem .6rem;background:var(--dark2);border:1px solid var(--border)">
-        ${optRows}
-        <div style="font-size:.57rem;color:var(--muted);margin-top:.4rem;padding-top:.4rem;border-top:1px solid var(--border)">
-          ${isEs()?`Participantes únicos: <b style="color:var(--cream)">${totalPart}</b> · Votos totales: <b style="color:var(--cream)">${tv}</b>`
-          :`Unique participants: <b style="color:var(--cream)">${totalPart}</b> · Total votes: <b style="color:var(--cream)">${tv}</b>`}
-        </div>
-      </div>
-    </details>`;
+    const votesDetailHTML=`<details style="margin-top:.5rem"><summary style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);cursor:pointer;padding:.4rem 0;user-select:none">📊 ${isEs()?'Ver detalle de votos':'View vote detail'} (${totalPart} ${isEs()?'participantes':'participants'}, ${tv} ${isEs()?'votos':'votes'}) ▼</summary><div style="margin-top:.4rem;padding:.5rem .6rem;background:var(--dark2);border:1px solid var(--border)">${optRows}<div style="font-size:.57rem;color:var(--muted);margin-top:.4rem;padding-top:.4rem;border-top:1px solid var(--border)">${isEs()?`Participantes: <b style="color:var(--cream)">${totalPart}</b> · Votos: <b style="color:var(--cream)">${tv}</b>`:`Participants: <b style="color:var(--cream)">${totalPart}</b> · Votes: <b style="color:var(--cream)">${tv}</b>`}</div></div></details>`;
 
-    /* ── BILLETERAS GANADORAS ── */
-    let winnersAdminHTML='';
+    let winnersHTML='';
     if(p.status==='resolved'&&p.winners&&p.winners.length>0){
-      const pe=p.prizeEach||Math.floor(p.reward/p.winners.length);
-      const wRows=p.winners.map((wa,i)=>{
-        const d=STATE.lb[wa];const alias=d&&d.alias?d.alias:'—';
-        return `<div style="padding:.4rem 0;border-bottom:1px solid rgba(74,222,128,.1)">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-            <span style="color:var(--gold);font-weight:700;font-size:.65rem">${['🥇','🥈','🥉'][i]||'🏅'} ${alias}</span>
-            <span style="color:var(--muted);font-size:.6rem">· ${pe.toLocaleString()} $OTI</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:5px">
-            <span style="color:var(--cream);word-break:break-all;flex:1;font-size:.57rem">${wa}</span>
-            <button onclick="navigator.clipboard.writeText('${wa}').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='📋',1500)})" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:.75rem;flex-shrink:0">📋</button>
-          </div>
-        </div>`;
-      }).join('');
-      winnersAdminHTML=`<div style="margin-top:.5rem;padding:.5rem .6rem;background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.2)">
-        <div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:.3rem">💸 ${isEs()?'Enviar $OTI a ganadores':'Send $OTI to winners'}</div>
-        ${wRows}
-      </div>`;
+      const pe=p.prizeEach||0;
+      const wRows=p.winners.map((wa,i)=>{const d=STATE.lb[wa];const alias=d&&d.alias?d.alias:'—';return`<div style="padding:.4rem 0;border-bottom:1px solid rgba(74,222,128,.1)"><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><span style="color:var(--gold);font-weight:700;font-size:.65rem">${['🥇','🥈','🥉'][i]||'🏅'} ${alias}</span><span style="color:var(--muted);font-size:.6rem">· ${pe.toLocaleString()} $OTI</span></div><div style="display:flex;align-items:center;gap:5px"><span style="color:var(--cream);word-break:break-all;flex:1;font-size:.57rem">${wa}</span><button onclick="navigator.clipboard.writeText('${wa}').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='📋',1500)})" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:.75rem;flex-shrink:0">📋</button></div></div>`;}).join('');
+      winnersHTML=`<div style="margin-top:.5rem;padding:.5rem .6rem;background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.2)"><div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:.3rem">💸 ${isEs()?'Enviar $OTI a ganadores':'Send $OTI to winners'}</div>${wRows}</div>`;
     }
 
-    div.innerHTML=`
-      <div class="pmr-q">${p.q}</div>
-      <div class="pmr-meta">${p.opts.join(' · ')} | ${p.reward.toLocaleString()} $OTI | ${p.wc} ${isEs()?'ganadores':'winners'} | ${p.method} | <b style="color:var(--gold)">${tv} ${isEs()?'votos':'votes'}</b></div>
-      <div class="pmr-acts">${acts}<button class="pmr-btn del" onclick="deletePred(${p.id})">${isEs()?'Eliminar':'Delete'}</button></div>
-      ${votesDetailHTML}${winnersAdminHTML}`;
+    const acts=p.status==='open'
+      ?`<select class="pmr-sel" id="rs${p.id}">${p.opts.map(o=>`<option value="${o}">${o}</option>`).join('')}</select><button class="pmr-btn res" onclick="resolvePred(${p.id},document.getElementById('rs${p.id}').value)">${isEs()?'Resolver':'Resolve'}</button>`
+      :`<span style="font-size:.62rem;color:var(--green)">✓ ${p.winner} · ${p.winners.length} ${isEs()?'ganadores':'winners'}</span>`;
+
+    div.innerHTML=`<div class="pmr-q">${p.q}</div><div class="pmr-meta">${p.opts.join(' · ')} | ${(p.reward||0).toLocaleString()} $OTI | ${p.wc} ${isEs()?'ganadores':'winners'} | ${p.method} | <b style="color:var(--gold)">${tv} ${isEs()?'votos':'votes'}</b></div><div class="pmr-acts">${acts}<button class="pmr-btn del" onclick="deletePred(${p.id})">${isEs()?'Eliminar':'Delete'}</button></div>${votesDetailHTML}${winnersHTML}`;
     c.appendChild(div);
   });
 }
+window.renderAList=renderAList;
 
 /* ═══ INIT ═══ */
 try{const dl=document.getElementById('fd');if(dl){const d=new Date();d.setDate(d.getDate()+7);dl.value=d.toISOString().slice(0,16);}}catch(e){}
 
-/* Auto-sync cada 30 segundos */
-setInterval(async()=>{ await syncFromCloud(); }, 30000);
-
-/* Arranque — checkAdminURL al final garantiza que el DOM está listo */
-window.addEventListener('load', ()=>{
+window.addEventListener('load',()=>{
   checkAdminURL();
   initDB();
 });
