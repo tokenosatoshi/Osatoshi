@@ -336,10 +336,10 @@ function fbListen() {
 function recalcVotes() {
   STATE.preds.forEach(pred => {
     const recalc = {};
-    pred.opts.forEach(o => recalc[o] = 0);
+    pred.opts.forEach(o => recalc[sanitizeKey(o)] = 0);
     Object.keys(STATE.votes).forEach(wallet => {
       const v = STATE.votes[wallet][pred.id];
-      if(v && recalc[v.choice] !== undefined) recalc[v.choice]++;
+      if(v && recalc[sanitizeKey(v.choice)] !== undefined) recalc[sanitizeKey(v.choice)]++;
     });
     pred.votes = recalc;
   });
@@ -450,6 +450,11 @@ window.openAdmin=openAdmin;window.closeAdmin=closeAdmin;window.logoutAdmin=logou
 window.changeP=changeP;window.setLang=setLang;
 
 /* ═══ CREATE PREDICTION ═══ */
+function sanitizeKey(str){
+  /* Firebase no permite . # $ / [ ] en claves — reemplazarlos */
+  return str.replace(/[.#$\/\[\]]/g, '_');
+}
+
 async function createPred(){
   const q=document.getElementById('fq').value.trim();
   const qe=document.getElementById('fqe').value.trim();
@@ -461,16 +466,16 @@ async function createPred(){
   const method=document.getElementById('fm').value;
   if(!q||opts.length<2){alert(isEs()?'Completa la pregunta y al menos 2 opciones':'Fill in question and at least 2 options');return;}
   const pred={id:Date.now(),q,qe:qe||q,opts,dl,reward,wc,method,cat,status:'open',winner:null,winners:[],drawSeed:'',prizeEach:0,created:new Date().toISOString(),votes:{}};
-  opts.forEach(o=>pred.votes[o]=0);
+  /* Usar claves sanitizadas para votes */
+  opts.forEach(o=>pred.votes[sanitizeKey(o)]=0);
   showLoader(true);
   try {
-    /* Guardar directamente en la ruta de Firebase para esta predicción */
     await set(ref(db, 'otipredict/preds/' + pred.id), pred);
     ['fq','fqe','o1','o2','o3','o4','fr','fw'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     showM('cMsg');
   } catch(e){
     console.error('createPred error', e);
-    alert(isEs()?'Error al guardar. Intenta de nuevo.':'Error saving. Please try again.');
+    alert(isEs()?'Error al guardar: '+e.message:'Error saving: '+e.message);
   }
   showLoader(false);
 }
@@ -521,7 +526,7 @@ async function submitV(id){
   if(!STATE.votes[w])STATE.votes[w]={};
   STATE.votes[w][id]={choice:c,alias:mA(),ts:new Date().toISOString()};
   /* Actualizar contador en la predicción */
-  pred.votes[c]=(pred.votes[c]||0)+1;
+  pred.votes[sanitizeKey(c)]=(pred.votes[sanitizeKey(c)]||0)+1;
   showLoader(true);
   /* Guardar voto y predicción por separado — no toca otras predicciones */
   await Promise.all([
@@ -563,7 +568,7 @@ function renderPCard(pred,container){
   if(isOpen&&pred.dl){const ms=new Date(pred.dl)-now;const h=Math.floor(ms/3600000);const m=Math.floor((ms%3600000)/60000);tLeft=h>24?Math.floor(h/24)+'d '+h%24+'h':h+'h '+m+'m';}
   let opH='';
   pred.opts.forEach(opt=>{
-    const cnt=(pred.votes&&pred.votes[opt])||0;const pct=total>0?Math.round(cnt/total*100):0;
+    const cnt=(pred.votes&&pred.votes[sanitizeKey(opt)])||0;const pct=total>0?Math.round(cnt/total*100):0;
     const iW=pred.status==='resolved'&&pred.winner===opt;const iL=pred.status==='resolved'&&pred.winner&&pred.winner!==opt;const iS=myV&&myV.choice===opt;
     opH+=`<div><button class="opt-btn${iS?' sel':''}${iW?' winner':''}${iL?' loser':''}" onclick="selOpt(${pred.id},'${opt.replace(/'/g,"\\'")}',this)" ${!isOpen||myV?'disabled':''}>${iW?'✓ ':''}${opt}</button><div class="vbar"><div class="vfill" style="width:${pct}%"></div></div><div class="vpct">${pct}% · ${cnt} ${isEs()?'votos':'votes'}</div></div>`;
   });
