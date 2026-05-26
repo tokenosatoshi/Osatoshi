@@ -226,12 +226,12 @@ textarea.finput{resize:vertical;min-height:60px}
   <button class="ni" onclick="goTo('rank',this)"><span class="ni-icon">🏆</span><span class="ni-label">Ranking</span></button>
 </nav>
 <script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, set, get, onValue, update } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
 /* ═══════════════════════════════════════
    FIREBASE CONFIG
    ═══════════════════════════════════════ */
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-/* ═══ FIREBASE API ═══ */
-import { getDatabase, ref, set, get, onValue, update } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyD6mUOT-60oBr6Zv8fQG6DE7S-xV5h9Pdg",
