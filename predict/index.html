@@ -249,17 +249,41 @@ const db = getDatabase(app);
 let STATE = { preds: [], votes: {}, lb: {} };
 
 /* ═══ FIREBASE API ═══ */
+
+/* Firebase convierte arrays a objetos {0:x, 1:y} — esta función los convierte de vuelta */
+function toArray(val) {
+  if(!val) return [];
+  if(Array.isArray(val)) return val;
+  /* Firebase devuelve objeto con claves numéricas */
+  return Object.values(val);
+}
+
 async function fbGet() {
   try {
     const snap = await get(ref(db, 'otipredict'));
-    if(snap.exists()) return snap.val();
+    if(snap.exists()){
+      const data = snap.val();
+      return {
+        preds: toArray(data.preds),
+        votes: data.votes || {},
+        lb:    data.lb    || {}
+      };
+    }
     return { preds: [], votes: {}, lb: {} };
   } catch(e) { console.error('fbGet error', e); return null; }
 }
 
 async function fbSet(data) {
   try {
-    await set(ref(db, 'otipredict'), data);
+    /* Convertir array de preds a objeto con id como clave
+       para que Firebase lo maneje correctamente */
+    const predsObj = {};
+    data.preds.forEach(p => { predsObj[p.id] = p; });
+    await set(ref(db, 'otipredict'), {
+      preds: predsObj,
+      votes: data.votes || {},
+      lb:    data.lb    || {}
+    });
   } catch(e) { console.error('fbSet error', e); }
 }
 
@@ -267,7 +291,9 @@ function fbListen() {
   onValue(ref(db, 'otipredict'), (snap) => {
     if(snap.exists()){
       const data = snap.val();
-      STATE.preds = data.preds || [];
+      /* Convertir objeto de preds de vuelta a array ordenado por fecha */
+      const predsRaw = data.preds || {};
+      STATE.preds = Object.values(predsRaw).sort((a,b) => b.id - a.id);
       STATE.votes = data.votes || {};
       STATE.lb    = data.lb    || {};
       recalcVotes();
@@ -311,9 +337,9 @@ async function initDB() {
   showLoader(true);
   const data = await fbGet();
   if(data){
-    STATE.preds = data.preds || [];
-    STATE.votes = data.votes || {};
-    STATE.lb    = data.lb    || {};
+    STATE.preds = data.preds; /* ya viene convertido desde fbGet */
+    STATE.votes = data.votes;
+    STATE.lb    = data.lb;
     recalcVotes();
   }
   showLoader(false);
