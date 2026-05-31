@@ -303,9 +303,17 @@ async function fbDeletePred(id) {
 /* Guarda votos y leaderboard sin tocar predicciones */
 async function fbSaveVotesAndLB() {
   try {
+    /* Sanitizar claves del leaderboard para Firebase
+       Las wallets de Solana no contienen caracteres prohibidos
+       pero hacemos limpieza preventiva */
+    const lbClean = {};
+    Object.keys(STATE.lb).forEach(wallet => {
+      const key = wallet.replace(/[.#$\/\[\]]/g, '_');
+      lbClean[key] = { ...STATE.lb[wallet], wallet };
+    });
     await update(ref(db, 'otipredict'), {
       votes: STATE.votes,
-      lb: STATE.lb
+      lb: lbClean
     });
   } catch(e) { console.error('fbSaveVotesAndLB error', e); }
 }
@@ -493,9 +501,9 @@ async function resolvePred(id,winner){
   else winners=drawW(correct,pred.wc,seed);
   pred.winners=winners;
   pred.prizeEach=winners.length>0?Math.floor(pred.reward/winners.length):0;
-  correct.forEach(w=>{if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:''};STATE.lb[w].total++;STATE.lb[w].alias=STATE.votes[w][id].alias||STATE.lb[w].alias;});
-  winners.forEach(w=>{if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:''};STATE.lb[w].wins++;STATE.lb[w].oti+=pred.prizeEach;});
-  Object.keys(STATE.votes).forEach(w=>{if(STATE.votes[w][id]&&!correct.includes(w)){if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:''};STATE.lb[w].total++;}});
+  correct.forEach(w=>{if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:'',wallet:w};STATE.lb[w].total++;STATE.lb[w].wallet=w;STATE.lb[w].alias=STATE.votes[w][id].alias||STATE.lb[w].alias;});
+  winners.forEach(w=>{if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:'',wallet:w};STATE.lb[w].wins++;STATE.lb[w].oti+=pred.prizeEach;STATE.lb[w].wallet=w;});
+  Object.keys(STATE.votes).forEach(w=>{if(STATE.votes[w][id]&&!correct.includes(w)){if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:'',wallet:w};STATE.lb[w].total++;STATE.lb[w].wallet=w;}});
   showLoader(true);
   /* Guardar predicción resuelta y leaderboard por separado */
   await fbSavePred(pred);
@@ -648,10 +656,12 @@ function renderLB(){
   const ent=Object.entries(STATE.lb).sort((a,b)=>b[1].oti-a[1].oti).slice(0,20);
   if(!ent.length){c.innerHTML=`<div class="empty-state" style="padding:1.5rem">${isEs()?'Ranking disponible al resolver los primeros pronósticos.':'Ranking available after first predictions are resolved.'}</div>`;return;}
   c.innerHTML='';
-  ent.forEach(([wallet,d],i)=>{
-    const isMe=w&&wallet===w;const name=d.alias||(wallet.slice(0,6)+'...'+wallet.slice(-4));
+  ent.forEach(([key,d],i)=>{
+    const wallet = d.wallet || key;
+    const isMe=w&&(wallet===w||key===w);
+    const name=d.alias||(wallet.slice(0,6)+'...'+wallet.slice(-4));
     const row=document.createElement('div');row.className='lb-row';
-    row.innerHTML=`<div class="lb-rank ${i<3?'top':''}">${MD[i]||i+1}</div><div class="lb-info"><div class="lb-name">${name}${isMe?'<span style="font-size:9px;color:var(--green);margin-left:5px">'+(isEs()?'(Tú)':'(You)')+'</span>':''}</div><div class="lb-stats">${d.wins} ${isEs()?'ganados':'wins'} · ${d.total} ${isEs()?'participaciones':'entries'}</div></div><div class="lb-oti">${d.oti.toLocaleString()} $OTI</div>`;
+    row.innerHTML=`<div class="lb-rank ${i<3?'top':''}">${MD[i]||i+1}</div><div class="lb-info"><div class="lb-name">${name}${isMe?'<span style="font-size:9px;color:var(--green);margin-left:5px">'+(isEs()?'(Tú)':'(You)')+'</span>':''}</div><div class="lb-stats">${d.wins} ${isEs()?'ganados':'wins'} · ${d.total} ${isEs()?'participaciones':'entries'}</div></div><div class="lb-oti">${(d.oti||0).toLocaleString()} $OTI</div>`;
     c.appendChild(row);
   });
 }
