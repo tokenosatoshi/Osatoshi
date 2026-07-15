@@ -318,6 +318,23 @@ async function fbSaveVotesAndLB() {
   } catch(e) { console.error('fbSaveVotesAndLB error', e); }
 }
 
+/* Guarda predicción + votos + leaderboard EN UNA SOLA operación atómica.
+   Necesario para evitar una condición de carrera: si se guardan por separado,
+   el listener en tiempo real puede recargar (y vaciar) STATE.lb justo entre
+   un guardado y el otro, antes de que el ranking llegue a persistirse. */
+async function fbSavePredVotesAndLB(pred) {
+  try {
+    const lbClean = {};
+    Object.keys(STATE.lb).forEach(wallet => {
+      const key = wallet.replace(/[.#$\/\[\]]/g, '_');
+      lbClean[key] = { ...STATE.lb[wallet], wallet };
+    });
+    const updates = { votes: STATE.votes, lb: lbClean };
+    if(pred) updates['preds/' + pred.id] = pred;
+    await update(ref(db, 'otipredict'), updates);
+  } catch(e) { console.error('fbSavePredVotesAndLB error', e); }
+}
+
 function fbListen() {
   onValue(ref(db, 'otipredict'), (snap) => {
     if(snap.exists()){
@@ -509,9 +526,9 @@ async function resolvePred(id,winner){
   winners.forEach(w=>{if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:'',wallet:w};STATE.lb[w].wins++;STATE.lb[w].oti+=pred.prizeEach;STATE.lb[w].wallet=w;});
   Object.keys(STATE.votes).forEach(w=>{if(STATE.votes[w][id]&&!correct.includes(w)){if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:'',wallet:w};STATE.lb[w].total++;STATE.lb[w].wallet=w;}});
   showLoader(true);
-  /* Guardar predicción resuelta y leaderboard por separado */
-  await fbSavePred(pred);
-  await fbSaveVotesAndLB();
+  /* Guardar predicción, votos y leaderboard EN UNA SOLA operación,
+     para que no se pierda el ranking recién calculado por una recarga en medio */
+  await fbSavePredVotesAndLB(pred);
   showLoader(false);
   checkNotif();
 }
@@ -757,8 +774,7 @@ async function removeVoteFromPred(wallet,predId){
   recalcVotes();
   showLoader(true);
   const pred=STATE.preds.find(p=>p.id===predId);
-  if(pred) await fbSavePred(pred);
-  await fbSaveVotesAndLB();
+  await fbSavePredVotesAndLB(pred);
   showLoader(false);
   renderAList();
   renderAll();
