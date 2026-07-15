@@ -336,6 +336,8 @@ function fbListen() {
       renderAll();
       renderW();
       checkNotif();
+      /* Refrescar el ranking en vivo si está visible, sin esperar a que el usuario cambie de pestaña */
+      if(document.getElementById('pg-rank')&&document.getElementById('pg-rank').classList.contains('on')) renderLB();
       if(document.getElementById('adminPnl').classList.contains('on')) renderAList();
     }
   });
@@ -769,18 +771,19 @@ function renderAList(){
   if(!STATE.preds.length){c.innerHTML=`<div style="font-size:.72rem;color:var(--muted);text-align:center;padding:1rem">${isEs()?'No hay pronósticos aún':'No predictions yet'}</div>`;return;}
   c.innerHTML='';
   STATE.preds.forEach(p=>{
+   try{
     const tv=Object.values(p.votes||{}).reduce((a,b)=>a+b,0);
     const div=document.createElement('div');div.className='pmr';
 
     /* Votos detallados */
     const votesByOpt={};
-    p.opts.forEach(o=>votesByOpt[o]=[]);
+    (p.opts||[]).forEach(o=>votesByOpt[o]=[]);
     Object.keys(STATE.votes).forEach(wallet=>{
       const v=STATE.votes[wallet][p.id];
       if(v&&votesByOpt[v.choice]!==undefined) votesByOpt[v.choice].push({wallet,alias:v.alias||'—',ts:v.ts});
     });
     const totalPart=Object.keys(STATE.votes).filter(w=>STATE.votes[w][p.id]).length;
-    const optRows=p.opts.map(opt=>{
+    const optRows=(p.opts||[]).map(opt=>{
       const voters=votesByOpt[opt]||[];
       const isWin=p.status==='resolved'&&p.winner===opt;
       const voterRows=voters.length
@@ -791,19 +794,22 @@ function renderAList(){
 
     const votesDetailHTML=`<details style="margin-top:.5rem"><summary style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);cursor:pointer;padding:.4rem 0;user-select:none">📊 ${isEs()?'Ver detalle de votos':'View vote detail'} (${totalPart} ${isEs()?'participantes':'participants'}, ${tv} ${isEs()?'votos':'votes'}) ▼</summary><div style="margin-top:.4rem;padding:.5rem .6rem;background:var(--dark2);border:1px solid var(--border)">${optRows}<div style="font-size:.57rem;color:var(--muted);margin-top:.4rem;padding-top:.4rem;border-top:1px solid var(--border)">${isEs()?`Participantes: <b style="color:var(--cream)">${totalPart}</b> · Votos: <b style="color:var(--cream)">${tv}</b>`:`Participants: <b style="color:var(--cream)">${totalPart}</b> · Votes: <b style="color:var(--cream)">${tv}</b>`}</div></div></details>`;
 
+    /* Los pronósticos resueltos con una versión anterior de la app pueden no tener 'winners' guardado: se trata como lista vacía en vez de romper el render */
+    const pWinners=p.winners||[];
     let winnersHTML='';
-    if(p.status==='resolved'&&p.winners&&p.winners.length>0){
+    if(p.status==='resolved'&&pWinners.length>0){
       const pe=p.prizeEach||0;
-      const wRows=p.winners.map((wa,i)=>{const d=STATE.lb[wa];const alias=d&&d.alias?d.alias:'—';return`<div style="padding:.4rem 0;border-bottom:1px solid rgba(74,222,128,.1)"><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><span style="color:var(--gold);font-weight:700;font-size:.65rem">${['🥇','🥈','🥉'][i]||'🏅'} ${alias}</span><span style="color:var(--muted);font-size:.6rem">· ${pe.toLocaleString()} $OTI</span></div><div style="display:flex;align-items:center;gap:5px"><span style="color:var(--cream);word-break:break-all;flex:1;font-size:.57rem">${wa}</span><button onclick="navigator.clipboard.writeText('${wa}').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='📋',1500)})" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:.75rem;flex-shrink:0">📋</button></div></div>`;}).join('');
+      const wRows=pWinners.map((wa,i)=>{const d=STATE.lb[wa];const alias=d&&d.alias?d.alias:'—';return`<div style="padding:.4rem 0;border-bottom:1px solid rgba(74,222,128,.1)"><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><span style="color:var(--gold);font-weight:700;font-size:.65rem">${['🥇','🥈','🥉'][i]||'🏅'} ${alias}</span><span style="color:var(--muted);font-size:.6rem">· ${pe.toLocaleString()} $OTI</span></div><div style="display:flex;align-items:center;gap:5px"><span style="color:var(--cream);word-break:break-all;flex:1;font-size:.57rem">${wa}</span><button onclick="navigator.clipboard.writeText('${wa}').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='📋',1500)})" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:.75rem;flex-shrink:0">📋</button></div></div>`;}).join('');
       winnersHTML=`<div style="margin-top:.5rem;padding:.5rem .6rem;background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.2)"><div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:.3rem">💸 ${isEs()?'Enviar $OTI a ganadores':'Send $OTI to winners'}</div>${wRows}</div>`;
     }
 
     const acts=p.status==='open'
-      ?`<select class="pmr-sel" id="rs${p.id}">${p.opts.map(o=>`<option value="${o}">${o}</option>`).join('')}</select><button class="pmr-btn res" onclick="resolvePred(${p.id},document.getElementById('rs${p.id}').value)">${isEs()?'Resolver':'Resolve'}</button>`
-      :`<span style="font-size:.62rem;color:var(--green)">✓ ${p.winner} · ${p.winners.length} ${isEs()?'ganadores':'winners'}</span>`;
+      ?`<select class="pmr-sel" id="rs${p.id}">${(p.opts||[]).map(o=>`<option value="${o}">${o}</option>`).join('')}</select><button class="pmr-btn res" onclick="resolvePred(${p.id},document.getElementById('rs${p.id}').value)">${isEs()?'Resolver':'Resolve'}</button>`
+      :`<span style="font-size:.62rem;color:var(--green)">✓ ${p.winner} · ${pWinners.length} ${isEs()?'ganadores':'winners'}</span>`;
 
-    div.innerHTML=`<div class="pmr-q">${p.q}</div><div class="pmr-meta">${p.opts.join(' · ')} | ${(p.reward||0).toLocaleString()} $OTI | ${p.wc} ${isEs()?'ganadores':'winners'} | ${p.method} | <b style="color:var(--gold)">${tv} ${isEs()?'votos':'votes'}</b></div><div class="pmr-acts">${acts}<button class="pmr-btn del" onclick="deletePred(${p.id})">${isEs()?'Eliminar':'Delete'}</button></div>${votesDetailHTML}${winnersHTML}`;
+    div.innerHTML=`<div class="pmr-q">${p.q}</div><div class="pmr-meta">${(p.opts||[]).join(' · ')} | ${(p.reward||0).toLocaleString()} $OTI | ${p.wc} ${isEs()?'ganadores':'winners'} | ${p.method} | <b style="color:var(--gold)">${tv} ${isEs()?'votos':'votes'}</b></div><div class="pmr-acts">${acts}<button class="pmr-btn del" onclick="deletePred(${p.id})">${isEs()?'Eliminar':'Delete'}</button></div>${votesDetailHTML}${winnersHTML}`;
     c.appendChild(div);
+   }catch(e){console.error('renderAList error en pred',p&&p.id,e);}
   });
 }
 window.renderAList=renderAList;
