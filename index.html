@@ -495,10 +495,12 @@ async function resolvePred(id,winner){
   pred.status='resolved';pred.winner=winner;pred.resolvedAt=new Date().toISOString();
   const seed=gSeed(pred);pred.drawSeed=seed;
   const correct=Object.keys(STATE.votes).filter(w=>STATE.votes[w][id]&&STATE.votes[w][id].choice===winner);
+  /* Los descalificados quedan fuera del sorteo/premio de ESTE evento, pero siguen contando su participación y su posición en el ranking no se ve afectada */
+  const eligible=correct.filter(w=>!(STATE.lb[w]&&STATE.lb[w].disqualified));
   let winners=[];
-  if(pred.method==='all')winners=correct;
-  else if(pred.method==='first')winners=correct.slice(0,pred.wc);
-  else winners=drawW(correct,pred.wc,seed);
+  if(pred.method==='all')winners=eligible;
+  else if(pred.method==='first')winners=eligible.slice(0,pred.wc);
+  else winners=drawW(eligible,pred.wc,seed);
   pred.winners=winners;
   pred.prizeEach=winners.length>0?Math.floor(pred.reward/winners.length):0;
   correct.forEach(w=>{if(!STATE.lb[w])STATE.lb[w]={wins:0,total:0,oti:0,alias:'',wallet:w};STATE.lb[w].total++;STATE.lb[w].wallet=w;STATE.lb[w].alias=STATE.votes[w][id].alias||STATE.lb[w].alias;});
@@ -655,9 +657,8 @@ function renderLB(){
   const w=mW();const c=document.getElementById('lbL');
   const isAdmin=new URLSearchParams(window.location.search).get('admin')==='MikayOsa';
 
-  /* Filtrar descalificados y ordenar por OTI ganados (acumulado total del torneo) */
+  /* Ordenar por OTI ganados (acumulado total del torneo). Los descalificados NO se ocultan: mantienen su posición en el ranking público */
   const ent=Object.entries(STATE.lb)
-    .filter(([k,d])=>!d.disqualified)
     .sort((a,b)=>{
       /* Orden: primero por OTI ganados, luego por aciertos, luego por participaciones */
       if(b[1].oti!==a[1].oti) return b[1].oti-a[1].oti;
@@ -699,6 +700,7 @@ function renderLB(){
             <span style="font-size:.72rem;color:var(--cream);font-weight:${i<3?'700':'400'}">${name}</span>
             ${isMe?`<span style="font-size:9px;color:var(--green)">${isEs()?'(Tú)':'(You)'}</span>`:''}
             ${d.alias?`<span style="font-size:9px;color:var(--muted)">· ${wallet.slice(0,6)}...${wallet.slice(-4)}</span>`:''}
+            ${isAdmin&&d.disqualified?`<span style="font-size:9px;color:var(--red)">⛔ ${isEs()?'Descalificado':'Disqualified'}</span>`:''}
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <div style="flex:1;height:3px;background:var(--dark2);border-radius:2px;overflow:hidden">
@@ -711,35 +713,15 @@ function renderLB(){
           <div style="font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;color:var(--gold)">${(d.oti||0).toLocaleString()}</div>
           <div style="font-size:.55rem;color:var(--muted)">$OTI</div>
         </div>
-        ${isAdmin?`<button onclick="disqualifyWallet('${key}')" title="${isEs()?'Descalificar':'Disqualify'}" style="background:none;border:1px solid rgba(248,113,113,.3);color:var(--red);padding:2px 6px;font-size:.6rem;cursor:pointer;border-radius:2px;flex-shrink:0">✕</button>`:''}
+        ${isAdmin?(d.disqualified?`<button onclick="reinstateWallet('${key}')" title="${isEs()?'Reinstalar':'Reinstate'}" style="background:none;border:1px solid rgba(74,222,128,.3);color:var(--green);padding:2px 6px;font-size:.6rem;cursor:pointer;border-radius:2px;flex-shrink:0">${isEs()?'Reinstalar':'Reinstate'}</button>`:`<button onclick="disqualifyWallet('${key}')" title="${isEs()?'Descalificar':'Disqualify'}" style="background:none;border:1px solid rgba(248,113,113,.3);color:var(--red);padding:2px 6px;font-size:.6rem;cursor:pointer;border-radius:2px;flex-shrink:0">✕</button>`):''}
       </div>`;
     c.appendChild(row);
   });
-
-  /* Mostrar descalificados solo para admin */
-  if(isAdmin){
-    const disq=Object.entries(STATE.lb).filter(([,d])=>d.disqualified);
-    if(disq.length){
-      const div=document.createElement('div');
-      div.style.cssText='margin-top:1rem;padding-top:.75rem;border-top:1px solid rgba(248,113,113,.2)';
-      div.innerHTML=`<div style="font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--red);margin-bottom:.5rem">⛔ ${isEs()?'Descalificados':'Disqualified'}</div>`;
-      disq.forEach(([key,d])=>{
-        const wallet=d.wallet||key;
-        const name=d.alias||(wallet.slice(0,6)+'...'+wallet.slice(-4));
-        const row=document.createElement('div');
-        row.style.cssText='display:flex;align-items:center;gap:.5rem;padding:.4rem 0;opacity:.5';
-        row.innerHTML=`<span style="font-size:.65rem;color:var(--red);flex:1">⛔ ${name}</span>
-          <button onclick="reinstateWallet('${key}')" style="background:none;border:1px solid rgba(74,222,128,.3);color:var(--green);padding:2px 6px;font-size:.6rem;cursor:pointer">${isEs()?'Reinstalar':'Reinstate'}</button>`;
-        div.appendChild(row);
-      });
-      c.appendChild(div);
-    }
-  }
 }
 
 /* Descalificar wallet */
 async function disqualifyWallet(key){
-  if(!confirm(isEs()?'¿Descalificar este participante?':'Disqualify this participant?'))return;
+  if(!confirm(isEs()?'¿Descalificar este participante? Quedará excluido de ganar premios en los próximos pronósticos que se resuelvan, pero mantendrá su posición y $OTI actuales en el ranking público.':'Disqualify this participant? They will be excluded from winning prizes in upcoming resolved predictions, but will keep their current position and $OTI in the public ranking.'))return;
   if(!STATE.lb[key])return;
   STATE.lb[key].disqualified=true;
   showLoader(true);
