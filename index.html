@@ -291,70 +291,6 @@
   .copy-btn { background: var(--gold); color: var(--dark); border: none; padding: 0.6rem 1.2rem; font-family: 'Space Mono',monospace; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
   .copy-btn:hover { background: var(--orange); color: #fff; }
 
-  /* ZEALY */
-  #zealy-section { padding: 6rem 4rem; background: var(--dark2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-  .zealy-inner { max-width: 900px; margin: 0 auto; }
-  .zealy-card {
-    margin-top: 3rem; background: var(--dark3);
-    border: 1px solid rgba(247,201,72,0.25);
-    position: relative; overflow: hidden;
-  }
-  .zealy-card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(90deg, #F7C948, #E8641A, #F7C948);
-  }
-  .zealy-top {
-    padding: 2.5rem 2.5rem 2rem;
-    display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 2rem; flex-wrap: wrap;
-  }
-  .zealy-badge {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    background: rgba(247,201,72,0.1); border: 1px solid rgba(247,201,72,0.3);
-    color: var(--gold); padding: 0.3rem 0.9rem;
-    font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase;
-    margin-bottom: 1rem;
-  }
-  .zealy-reward {
-    text-align: center; flex-shrink: 0;
-    background: var(--dark); border: 1px solid var(--border);
-    padding: 1.5rem 2rem;
-  }
-  .zealy-reward-label { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
-  .zealy-reward-val { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; color: var(--gold); line-height: 1; }
-  .zealy-reward-token { font-size: 0.7rem; color: var(--muted); margin-top: 0.3rem; letter-spacing: 0.1em; }
-  .zealy-tasks {
-    display: grid; grid-template-columns: repeat(2, 1fr);
-    gap: 2px; background: var(--border);
-    border-top: 1px solid var(--border);
-  }
-  .zealy-task {
-    background: var(--dark2); padding: 1.2rem 1.5rem;
-    display: flex; align-items: center; gap: 1rem;
-    transition: background 0.2s;
-  }
-  .zealy-task:hover { background: var(--dark3); }
-  .zt-icon { font-size: 1.4rem; min-width: 2rem; text-align: center; }
-  .zt-name { font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700; color: var(--cream); margin-bottom: 0.2rem; }
-  .zt-desc { font-size: 0.68rem; color: var(--muted); line-height: 1.5; }
-  .zealy-cta { padding: 2rem 2.5rem; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
-  .zealy-cta-text { font-size: 0.8rem; color: var(--muted); line-height: 1.7; max-width: 480px; }
-  .btn-zealy {
-    background: var(--gold); color: var(--dark);
-    padding: 0.9rem 2.2rem; font-family: 'Space Mono', monospace;
-    font-weight: 700; font-size: 0.8rem; letter-spacing: 0.05em;
-    text-transform: uppercase; text-decoration: none; border: none;
-    cursor: pointer; transition: background 0.2s, transform 0.15s;
-    display: inline-block; white-space: nowrap;
-  }
-  .btn-zealy:hover { background: var(--orange); color: white; transform: translateY(-2px); }
-  @media (max-width: 900px) {
-    #zealy-section { padding: 4rem 1.5rem; }
-    .zealy-top { flex-direction: column; }
-    .zealy-tasks { grid-template-columns: 1fr; }
-    .zealy-cta { flex-direction: column; }
-  }
-
   /* TRANSPARENCY */
   #transparency-section { padding: 6rem 4rem; }
   .transparency-inner { max-width: 900px; margin: 0 auto; }
@@ -448,7 +384,6 @@
     <li><a href="#about"><span class="t t-es">Acerca</span><span class="t t-en">About</span></a></li>
     <li><a href="#tokenomics-section">Tokenomics</a></li>
     <li><a href="#roadmap-section">Roadmap</a></li>
-    <li><a href="#zealy-section"><span class="t t-es">Misiones</span><span class="t t-en">Missions</span></a></li>
     <li>
       <a href="https://tokenosatoshi.github.io/Osatoshi/predict/" target="_blank" rel="noopener"
          style="color:var(--gold);text-decoration:none;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(247,201,72,.3);padding:3px 10px;transition:background .2s,border-color .2s"
@@ -781,88 +716,6 @@
     <button class="copy-btn" id="copyBtn" onclick="copyCA()">
       <span class="t t-es">Copiar CA</span><span class="t t-en">Copy CA</span>
     </button>
-  </div>
-</section>
-
-<!-- ZEALY -->
-<section id="zealy-section">
-  <div class="zealy-inner">
-    <div class="section-label fade-in"><span class="t t-es">Gana $OTI</span><span class="t t-en">Earn $OTI</span></div>
-    <h2 class="section-title fade-in">
-      <span class="t t-es">Completa misiones.<br>Gana tokens.</span>
-      <span class="t t-en">Complete missions.<br>Earn tokens.</span>
-    </h2>
-    <p style="color:var(--muted);font-size:.85rem;line-height:1.9;margin-top:0;" class="fade-in t t-es">
-      Únete a nuestra plataforma Zealy, completa tareas sencillas y recibe $OTI directamente en tu wallet. Recompensamos a quienes apoyan el crecimiento del proyecto.
-    </p>
-    <p style="color:var(--muted);font-size:.85rem;line-height:1.9;margin-top:0;" class="fade-in t t-en">
-      Join our Zealy platform, complete simple tasks and receive $OTI directly to your wallet. We reward those who support the project's growth.
-    </p>
-
-    <div class="zealy-card fade-in">
-      <div class="zealy-top">
-        <div>
-          <div class="zealy-badge">⚡ <span class="t t-es">Misiones activas</span><span class="t t-en">Active missions</span></div>
-          <h3 style="font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--cream);margin-bottom:0.6rem;">
-            <span class="t t-es">Osatoshi Questboard</span><span class="t t-en">Osatoshi Questboard</span>
-          </h3>
-          <p style="font-size:0.78rem;color:var(--muted);line-height:1.8;max-width:420px;" class="t t-es">
-            Realiza tareas rápidas y sencillas para apoyar el proyecto. Cada misión completada te da puntos canjeables por $OTI reales.
-          </p>
-          <p style="font-size:0.78rem;color:var(--muted);line-height:1.8;max-width:420px;" class="t t-en">
-            Complete quick and simple tasks to support the project. Each completed mission gives you points redeemable for real $OTI.
-          </p>
-        </div>
-        <div class="zealy-reward">
-          <div class="zealy-reward-label"><span class="t t-es">Recompensa total</span><span class="t t-en">Total reward</span></div>
-          <div class="zealy-reward-val">50,000</div>
-          <div class="zealy-reward-token">$OTI</div>
-        </div>
-      </div>
-
-      <div class="zealy-tasks">
-        <div class="zealy-task">
-          <div class="zt-icon">💬</div>
-          <div>
-            <div class="zt-name"><span class="t t-es">Únete al Telegram</span><span class="t t-en">Join Telegram</span></div>
-            <div class="zt-desc"><span class="t t-es">Entra a nuestra comunidad oficial</span><span class="t t-en">Join our official community</span></div>
-          </div>
-        </div>
-        <div class="zealy-task">
-          <div class="zt-icon">🎮</div>
-          <div>
-            <div class="zt-name"><span class="t t-es">Únete al Discord</span><span class="t t-en">Join Discord</span></div>
-            <div class="zt-desc"><span class="t t-es">Conéctate con los holders</span><span class="t t-en">Connect with holders</span></div>
-          </div>
-        </div>
-        <div class="zealy-task">
-          <div class="zt-icon">🎵</div>
-          <div>
-            <div class="zt-name"><span class="t t-es">Ver video en TikTok</span><span class="t t-en">Watch TikTok video</span></div>
-            <div class="zt-desc"><span class="t t-es">Conoce el proyecto en video</span><span class="t t-en">Learn about the project on video</span></div>
-          </div>
-        </div>
-        <div class="zealy-task">
-          <div class="zt-icon">🌐</div>
-          <div>
-            <div class="zt-name"><span class="t t-es">Visitar el sitio web</span><span class="t t-en">Visit the website</span></div>
-            <div class="zt-desc"><span class="t t-es">Explora todo sobre $OTI</span><span class="t t-en">Explore everything about $OTI</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="zealy-cta">
-        <p class="zealy-cta-text t t-es">
-          Las recompensas se distribuyen desde la wallet oficial de premios. Verificable en Solscan. Completa todas las misiones para recibir tus <strong style="color:var(--gold)">50,000 $OTI</strong>.
-        </p>
-        <p class="zealy-cta-text t t-en">
-          Rewards are distributed from the official prizes wallet. Verifiable on Solscan. Complete all missions to receive your <strong style="color:var(--gold)">50,000 $OTI</strong>.
-        </p>
-        <a href="https://zealy.io/cw/osatoshiofficial/questboard" target="_blank" class="btn-zealy">
-          <span class="t t-es">Empezar misiones →</span><span class="t t-en">Start missions →</span>
-        </a>
-      </div>
-    </div>
   </div>
 </section>
 
