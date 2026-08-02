@@ -58,8 +58,10 @@
   .nav-logo {
     font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem;
     letter-spacing: -0.02em; color: var(--gold); text-decoration: none; flex-shrink: 0;
+    display: flex; align-items: center;
   }
   .nav-logo span { color: var(--cream); }
+  .nav-logo-img { height: 46px; width: 46px; object-fit: cover; display: block; border: 1px solid var(--border); }
   nav ul { display: flex; gap: 2rem; list-style: none; align-items: center; }
   nav a {
     color: var(--muted); text-decoration: none; font-size: 0.72rem;
@@ -371,6 +373,7 @@
   @media (max-width: 900px) {
     nav { padding: 1rem 1.5rem; }
     nav ul { display: none; }
+    .nav-logo-img { height: 38px; width: 38px; }
     section,#roadmap-section,#buy-section,#community-section,#tokenomics-section { padding: 4rem 1.5rem; }
     .hero { padding: 7rem 1.5rem 3rem; }
     .about-grid,.tokenomics-grid { grid-template-columns: 1fr; gap: 3rem; }
@@ -385,7 +388,7 @@
 
 <!-- NAV -->
 <nav>
-  <a href="#" class="nav-logo">Osa<span>toshi</span></a>
+  <a href="#" class="nav-logo"><img src="Logo_principal.jpeg" alt="Osatoshi" class="nav-logo-img"></a>
   <ul>
     <li><a href="#about"><span class="t t-es">Acerca</span><span class="t t-en">About</span></a></li>
     <li><a href="#tokenomics-section">Tokenomics</a></li>
