@@ -215,6 +215,12 @@
   .asic-card { background: var(--dark3); border: 1px solid var(--border); padding: 2.5rem; position: relative; overflow: hidden; }
   .asic-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg,var(--gold),var(--orange)); }
   .asic-card-title { font-family: 'Syne', sans-serif; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 1.5rem; }
+
+  /* MASCOT IMAGE */
+  .mascot-card { background: var(--dark3); border: 1px solid var(--border); position: relative; overflow: hidden; margin-bottom: 1.5rem; }
+  .mascot-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg,var(--gold),var(--orange)); z-index: 1; }
+  .mascot-img { width: 100%; height: auto; display: block; }
+  .mascot-caption { padding: 0.9rem 1.2rem; border-top: 1px solid var(--border); font-family: 'Syne', sans-serif; font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); }
   .mining-animation { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
   .mining-row { display: flex; gap: 0.3rem; }
   .mining-block { height: 8px; flex: 1; background: var(--dark); border: 1px solid rgba(247,201,72,0.1); animation: mine 3s infinite; }
@@ -497,6 +503,10 @@
       </a>
     </div>
     <div class="about-visual fade-in">
+      <div class="mascot-card">
+        <img src="osatoshi-mascot.jpg" alt="Osatoshi mascot next to ASIC mining rig" class="mascot-img" loading="lazy">
+        <div class="mascot-caption">🐕 <span class="t t-es">Osatoshi · el guardián de la minería</span><span class="t t-en">Osatoshi · guardian of the mining rig</span></div>
+      </div>
       <div class="asic-card">
         <div class="asic-card-title">🔩 ASIC Mining Status</div>
         <div class="mining-animation">
