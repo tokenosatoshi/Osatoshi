@@ -114,6 +114,13 @@ body.lang-en div.t-en{display:block !important}
 .rules-art p{font-size:.75rem;color:var(--muted);line-height:1.85;margin-bottom:.5rem}
 .rules-link{display:inline-flex;align-items:center;gap:5px;background:none;border:1px solid var(--border);color:var(--gold);padding:5px 11px;font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;margin-bottom:.9rem}
 .rules-link:active{background:rgba(247,201,72,.08);border-color:var(--gold)}
+.turf-race-block{margin-bottom:.9rem}
+.turf-race-title{font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:.4rem}
+.horse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:5px}
+.horse-btn{background:var(--dark2);border:1px solid var(--border);color:var(--cream);padding:.5rem 0;font-family:'Space Mono',monospace;font-size:.68rem;font-weight:700;cursor:pointer;text-align:center}
+.horse-btn.sel{border-color:var(--gold);background:rgba(247,201,72,.15);color:var(--gold)}
+.turf-stand-row{display:flex;justify-content:space-between;padding:3px 0;font-size:.65rem;color:var(--muted)}
+.turf-stand-row b{color:var(--gold);font-weight:700}
 .admin-hdr{padding:calc(var(--st)+12px) 1.1rem 12px;background:var(--dark2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .atitle{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--gold)}
 .aclose{background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;padding:4px 8px}
@@ -193,6 +200,21 @@ textarea.finput{resize:vertical;min-height:60px}
     <div class="smsg" id="cMsg"><span class="t t-es">✓ Pronóstico publicado</span><span class="t t-en">✓ Prediction published</span></div>
     <div class="asection"><span class="t t-es">Gestionar</span><span class="t t-en">Manage</span></div>
     <div id="aPredList"></div>
+
+    <div class="asection">🏇 <span class="t t-es">Crear Polla Hípica</span><span class="t t-en">Create Horse Racing Pool</span></div>
+    <div class="fgroup"><label class="flabel"><span class="t t-es">Hipódromo</span><span class="t t-en">Hippodrome</span></label><input class="finput" id="thHip" placeholder="Hipódromo de Chile" style="margin-bottom:0"></div>
+    <div class="frow" style="margin-bottom:.875rem">
+      <div><label class="flabel"><span class="t t-es">Premio total ($OTI)</span><span class="t t-en">Total prize ($OTI)</span></label><input type="number" class="finput" id="thReward" placeholder="3000000" min="0" style="margin-bottom:0"></div>
+      <div><label class="flabel"><span class="t t-es">Caballos por carrera</span><span class="t t-en">Horses per race</span></label><input type="number" class="finput" id="thHorses" placeholder="14" min="4" max="20" value="14" style="margin-bottom:0"></div>
+    </div>
+    <div class="fgroup"><label class="flabel"><span class="t t-es">Fecha límite de participación</span><span class="t t-en">Entry deadline</span></label><input type="datetime-local" class="finput" id="thDl" style="margin-bottom:0"></div>
+    <p style="font-size:.62rem;color:var(--muted);line-height:1.7;margin-bottom:.875rem" class="t t-es">Se crearán automáticamente 7 carreras. 1° lugar = 5 pts · 2° lugar = 2 pts · 3° lugar = 1 pt. Premios: 60% / 30% / 10% para los 3 primeros lugares por puntaje (empates se reparten entre los que compartan el mismo puesto).</p>
+    <p style="font-size:.62rem;color:var(--muted);line-height:1.7;margin-bottom:.875rem" class="t t-en">7 races are created automatically. 1st place = 5 pts · 2nd place = 2 pts · 3rd place = 1 pt. Prizes: 60% / 30% / 10% for the top 3 point tiers (ties split the tier's share evenly).</p>
+    <button class="asub" onclick="createTurfPool()">🏇 <span class="t t-es">Publicar Polla Hípica</span><span class="t t-en">Publish Horse Racing Pool</span></button>
+    <div class="smsg" id="thMsg"><span class="t t-es">✓ Polla publicada</span><span class="t t-en">✓ Pool published</span></div>
+    <div class="asection"><span class="t t-es">Gestionar pollas hípicas</span><span class="t t-en">Manage horse racing pools</span></div>
+    <div id="aTurfList"></div>
+
     <div class="asection"><span class="t t-es">Configuración</span><span class="t t-en">Settings</span></div>
     <div class="fgroup"><label class="flabel"><span class="t t-es">Nueva contraseña</span><span class="t t-en">New password</span></label><input type="password" class="finput" id="npInp" style="margin-bottom:0" placeholder="Nueva contraseña"></div>
     <button class="asub" onclick="changeP()" style="background:var(--dark3);color:var(--gold);border:1px solid var(--border)"><span class="t t-es">Cambiar contraseña</span><span class="t t-en">Change password</span></button>
@@ -235,6 +257,10 @@ textarea.finput{resize:vertical;min-height:60px}
       <div class="stat-box"><div class="stat-l">$OTI</div><div class="stat-v" id="sOti">0</div></div>
       <div class="stat-box"><div class="stat-l"><span class="t t-es">Jugadores</span><span class="t t-en">Players</span></div><div class="stat-v wh" id="sUsers">0</div></div>
       <div class="stat-box"><div class="stat-l"><span class="t t-es">Resueltos</span><span class="t t-en">Resolved</span></div><div class="stat-v gr" id="sRes">0</div></div>
+    </div>
+    <div id="turfSection" style="display:none">
+      <div class="slabel" style="margin-top:0">🏇 <span class="t t-es">Pollas hípicas activas</span><span class="t t-en">Active horse racing pools</span></div>
+      <div id="turfPools"></div>
     </div>
     <div class="slabel"><span class="t t-es">Pronósticos activos</span><span class="t t-en">Active predictions</span></div>
     <div id="oPreds"></div>
@@ -308,7 +334,7 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 /* Estado global */
-let STATE = { preds: [], votes: {}, lb: {}, activeSection: null };
+let STATE = { preds: [], votes: {}, lb: {}, activeSection: null, turf: { pools: [], picks: {} } };
 
 /* ═══ FIREBASE API ═══ */
 
@@ -396,6 +422,37 @@ async function fbSavePredVotesAndLB(pred) {
   } catch(e) { console.error('fbSavePredVotesAndLB error', e); }
 }
 
+/* ═══ TURF (POLLA HÍPICA) — FIREBASE ═══ */
+async function fbSaveTurfPool(pool) {
+  try { await set(ref(db, 'otipredict/turf/pools/' + pool.id), pool); }
+  catch(e) { console.error('fbSaveTurfPool error', e); }
+}
+async function fbDeleteTurfPool(id) {
+  try {
+    await set(ref(db, 'otipredict/turf/pools/' + id), null);
+    await set(ref(db, 'otipredict/turf/picks/' + id), null);
+  } catch(e) { console.error('fbDeleteTurfPool error', e); }
+}
+async function fbSaveTurfPick(poolId, walletKey, pickObj) {
+  try { await set(ref(db, 'otipredict/turf/picks/' + poolId + '/' + walletKey), pickObj); }
+  catch(e) { console.error('fbSaveTurfPick error', e); }
+}
+/* Guarda el pool (resultados) + el leaderboard global EN UNA SOLA operación atómica,
+   por la misma razón de condición de carrera que fbSavePredVotesAndLB */
+async function fbFinalizeTurfPool(pool) {
+  try {
+    const lbClean = {};
+    Object.keys(STATE.lb).forEach(wallet => {
+      const key = wallet.replace(/[.#$\/\[\]]/g, '_');
+      lbClean[key] = { ...STATE.lb[wallet], wallet };
+    });
+    const updates = {};
+    updates['turf/pools/' + pool.id] = pool;
+    updates['lb'] = lbClean;
+    await update(ref(db, 'otipredict'), updates);
+  } catch(e) { console.error('fbFinalizeTurfPool error', e); }
+}
+
 function fbListen() {
   onValue(ref(db, 'otipredict'), (snap) => {
     if(snap.exists()){
@@ -410,15 +467,25 @@ function fbListen() {
       }
       STATE.votes = data.votes || {};
       STATE.lb    = data.lb    || {};
+      parseTurfData(data.turf);
       recalcVotes();
       renderAll();
       renderW();
       checkNotif();
       /* Refrescar el ranking en vivo si está visible, sin esperar a que el usuario cambie de pestaña */
       if(document.getElementById('pg-rank')&&document.getElementById('pg-rank').classList.contains('on')) renderLB();
-      if(document.getElementById('adminPnl').classList.contains('on')) renderAList();
+      if(document.getElementById('adminPnl').classList.contains('on')){ renderAList(); renderATurfList(); }
     }
   });
+}
+
+/* Convierte el nodo 'turf' de Firebase (preds y picks pueden venir como objetos) al formato de STATE */
+function parseTurfData(turfRaw) {
+  turfRaw = turfRaw || {};
+  STATE.turf.pools = turfRaw.pools
+    ? Object.values(turfRaw.pools).filter(p => p && p.id).sort((a,b) => b.id - a.id)
+    : [];
+  STATE.turf.picks = turfRaw.picks || {};
 }
 
 function recalcVotes() {
@@ -466,6 +533,7 @@ async function initDB() {
       }
       STATE.votes = data.votes || {};
       STATE.lb    = data.lb    || {};
+      parseTurfData(data.turf);
       recalcVotes();
     }
   } catch(e){ console.error('initDB error', e); }
@@ -557,7 +625,7 @@ function openP(){document.getElementById('passOv').style.display='flex';document
 function closeP(){document.getElementById('passOv').style.display='none';}
 function checkP(){const v=document.getElementById('pInp').value;if(v===gPass()){closeP();openAdmin();}else{document.getElementById('pErr').style.display='block';}}
 document.getElementById('pInp').addEventListener('keydown',e=>{if(e.key==='Enter')checkP();});
-function openAdmin(){document.getElementById('adminPnl').classList.add('on');renderAList();}
+function openAdmin(){document.getElementById('adminPnl').classList.add('on');renderAList();renderATurfList();}
 function closeAdmin(){document.getElementById('adminPnl').classList.remove('on');}
 function logoutAdmin(){closeAdmin();window.location.href=window.location.pathname;}
 function changeP(){const v=document.getElementById('npInp').value.trim();if(!v)return;ss('oti_pass',v);document.getElementById('npInp').value='';showM('pMsg');}
@@ -632,6 +700,159 @@ async function deletePred(id){
   showLoader(false);
 }
 window.deletePred=deletePred;
+
+/* ═══ TURF (POLLA HÍPICA) — ADMIN ═══ */
+function turfPointsFor(pool,pickObj){
+  let total=0;const breakdown=[];
+  for(let i=0;i<pool.racesCount;i++){
+    const res=pool.results[i];const pick=pickObj.picks[i];
+    let pts=0;
+    if(res){ if(pick===res.first)pts=5; else if(pick===res.second)pts=2; else if(pick===res.third)pts=1; }
+    total+=pts;breakdown.push({race:i+1,pick,pts,done:!!res});
+  }
+  return {total,breakdown};
+}
+
+async function createTurfPool(){
+  const hip=document.getElementById('thHip').value.trim();
+  const reward=parseInt(document.getElementById('thReward').value)||0;
+  const dl=document.getElementById('thDl').value;
+  const horses=Math.max(4,Math.min(20,parseInt(document.getElementById('thHorses').value)||14));
+  if(!hip||!reward||!dl){alert(isEs()?'Completa hipódromo, premio y fecha límite':'Fill in hippodrome, prize and deadline');return;}
+  const pool={
+    id:Date.now(),hippodrome:hip,reward,dl,racesCount:7,
+    horsesPerRace:Array(7).fill(horses),
+    results:Array(7).fill(null),
+    status:'open',finalized:false,finalWinners:null
+  };
+  showLoader(true);
+  await fbSaveTurfPool(pool);
+  showLoader(false);
+  ['thHip','thReward','thDl'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  showM('thMsg');
+}
+window.createTurfPool=createTurfPool;
+
+async function saveTurfRace(poolId,raceIdx){
+  const pool=STATE.turf.pools.find(p=>p.id===poolId);if(!pool)return;
+  const f=document.getElementById(`r1-${poolId}-${raceIdx}`).value;
+  const s=document.getElementById(`r2-${poolId}-${raceIdx}`).value;
+  const t=document.getElementById(`r3-${poolId}-${raceIdx}`).value;
+  if(!f||!s||!t){alert(isEs()?'Completa los 3 lugares':'Fill in all 3 places');return;}
+  if(f===s||f===t||s===t){alert(isEs()?'El mismo caballo no puede repetirse en más de un lugar':'The same horse cannot repeat in more than one place');return;}
+  pool.results[raceIdx]={first:Number(f),second:Number(s),third:Number(t)};
+  showLoader(true);
+  await fbSaveTurfPool(pool);
+  showLoader(false);
+  renderATurfList();
+}
+window.saveTurfRace=saveTurfRace;
+
+function editTurfRace(poolId,raceIdx){
+  const pool=STATE.turf.pools.find(p=>p.id===poolId);if(!pool)return;
+  pool.results[raceIdx]=null;
+  renderATurfList();
+}
+window.editTurfRace=editTurfRace;
+
+async function finalizeTurfPool(poolId){
+  const pool=STATE.turf.pools.find(p=>p.id===poolId);if(!pool)return;
+  if(pool.results.filter(r=>r).length<pool.racesCount){alert(isEs()?'Faltan resultados de carreras por registrar':'Some race results are still missing');return;}
+  const picks=STATE.turf.picks[poolId]||{};
+  if(!Object.keys(picks).length){alert(isEs()?'Esta polla no tiene participantes':'This pool has no participants');return;}
+  if(!confirm(isEs()?'¿Finalizar esta polla y repartir los premios? Esta acción no se puede deshacer.':'Finalize this pool and distribute prizes? This cannot be undone.'))return;
+  const entries=Object.keys(picks).map(k=>[k,turfPointsFor(pool,picks[k]).total]);
+  const uniqueDesc=[...new Set(entries.map(e=>e[1]))].sort((a,b)=>b-a);
+  const v1=uniqueDesc[0],v2=uniqueDesc[1],v3=uniqueDesc[2];
+  const tier1=entries.filter(e=>e[1]===v1).map(e=>e[0]);
+  const tier2=v2!==undefined?entries.filter(e=>e[1]===v2).map(e=>e[0]):[];
+  const tier3=v3!==undefined?entries.filter(e=>e[1]===v3).map(e=>e[0]):[];
+  const p1=tier1.length?Math.floor(pool.reward*0.6/tier1.length):0;
+  const p2=tier2.length?Math.floor(pool.reward*0.3/tier2.length):0;
+  const p3=tier3.length?Math.floor(pool.reward*0.1/tier3.length):0;
+  /* Contar participación de todos, luego premiar solo a los 3 pelotones de puntaje */
+  Object.keys(picks).forEach(k=>{
+    const pk=picks[k];
+    if(!STATE.lb[pk.wallet])STATE.lb[pk.wallet]={wins:0,total:0,oti:0,alias:pk.alias||'',wallet:pk.wallet};
+    STATE.lb[pk.wallet].total++;
+    STATE.lb[pk.wallet].alias=pk.alias||STATE.lb[pk.wallet].alias;
+  });
+  [[tier1,p1],[tier2,p2],[tier3,p3]].forEach(([tier,prize])=>{
+    if(!prize)return;
+    tier.forEach(k=>{
+      const pk=picks[k];if(!pk)return;
+      STATE.lb[pk.wallet].oti+=prize;
+      STATE.lb[pk.wallet].wins++;
+    });
+  });
+  pool.finalized=true;pool.status='resolved';
+  pool.finalWinners={tier1,tier2,tier3,p1,p2,p3,v1,v2:v2??null,v3:v3??null};
+  showLoader(true);
+  await fbFinalizeTurfPool(pool);
+  showLoader(false);
+  renderATurfList();renderAll();
+}
+window.finalizeTurfPool=finalizeTurfPool;
+
+async function deleteTurfPool(poolId){
+  if(!confirm(isEs()?'¿Eliminar esta polla hípica?':'Delete this horse racing pool?'))return;
+  showLoader(true);
+  await fbDeleteTurfPool(poolId);
+  showLoader(false);
+  renderATurfList();
+}
+window.deleteTurfPool=deleteTurfPool;
+
+function turfStandingsHTML(pool){
+  const picks=STATE.turf.picks[pool.id]||{};
+  const rows=Object.keys(picks).map(k=>{
+    const p=picks[k];const {total}=turfPointsFor(pool,p);
+    return {name:p.alias||(p.wallet.slice(0,6)+'...'+p.wallet.slice(-4)),total};
+  }).sort((a,b)=>b.total-a.total).slice(0,15);
+  if(!rows.length)return'';
+  const list=rows.map((r,i)=>`<div class="turf-stand-row"><span>${i+1}. ${r.name}</span><b>${r.total} pts</b></div>`).join('');
+  return `<details style="margin-top:.6rem"><summary style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);cursor:pointer;padding:.3rem 0">📊 ${isEs()?'Tabla de posiciones':'Standings'} ▼</summary><div style="margin-top:.4rem;padding:.5rem .6rem;background:var(--dark2);border:1px solid var(--border)">${list}</div></details>`;
+}
+
+function renderATurfList(){
+  const c=document.getElementById('aTurfList');if(!c)return;
+  const pools=STATE.turf.pools||[];
+  if(!pools.length){c.innerHTML=`<div style="font-size:.7rem;color:var(--muted);padding:.5rem 0">${isEs()?'No hay pollas hípicas aún':'No horse racing pools yet'}</div>`;return;}
+  c.innerHTML='';
+  pools.forEach(pool=>{
+    try{ renderATurfCard(pool,c); }catch(e){ console.error('renderATurfList error en pool',pool&&pool.id,e); }
+  });
+}
+window.renderATurfList=renderATurfList;
+
+function renderATurfCard(pool,c){
+  const picks=STATE.turf.picks[pool.id]||{};
+  const participantCount=Object.keys(picks).length;
+  const div=document.createElement('div');div.className='pmr';
+  let racesHTML='';
+  for(let i=0;i<pool.racesCount;i++){
+    const n=pool.horsesPerRace[i];
+    const res=pool.results[i];
+    if(res){
+      racesHTML+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span style="font-size:.62rem;color:var(--cream)">${isEs()?'Carrera':'Race'} ${i+1}: 🥇${res.first} 🥈${res.second} 🥉${res.third}</span>${pool.finalized?'':`<button onclick="editTurfRace(${pool.id},${i})" style="background:none;border:1px solid var(--border);color:var(--muted);font-size:.55rem;padding:2px 6px;cursor:pointer">${isEs()?'Editar':'Edit'}</button>`}</div>`;
+    } else {
+      const opts=Array.from({length:n},(_,x)=>x+1).map(h=>`<option value="${h}">${h}</option>`).join('');
+      racesHTML+=`<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div style="font-size:.62rem;color:var(--cream);margin-bottom:4px">${isEs()?'Carrera':'Race'} ${i+1}</div><div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap"><select class="pmr-sel" id="r1-${pool.id}-${i}"><option value="">🥇 1°</option>${opts}</select><select class="pmr-sel" id="r2-${pool.id}-${i}"><option value="">🥈 2°</option>${opts}</select><select class="pmr-sel" id="r3-${pool.id}-${i}"><option value="">🥉 3°</option>${opts}</select><button class="pmr-btn res" onclick="saveTurfRace(${pool.id},${i})">${isEs()?'Guardar':'Save'}</button></div></div>`;
+    }
+  }
+  const doneCount=pool.results.filter(r=>r).length;
+  const canFinalize=doneCount===pool.racesCount&&!pool.finalized;
+  const standHTML=turfStandingsHTML(pool);
+  div.innerHTML=`<div class="pmr-q">🏇 ${pool.hippodrome} <span style="color:var(--muted);font-weight:400">· ${(pool.reward||0).toLocaleString()} $OTI · ${participantCount} ${isEs()?'participantes':'participants'}</span></div>
+    <div class="pmr-meta">${doneCount}/${pool.racesCount} ${isEs()?'carreras registradas':'races recorded'}${pool.finalized?` · <span style="color:var(--green)">✓ ${isEs()?'Finalizada':'Finalized'}</span>`:''}</div>
+    <div style="margin:.5rem 0">${racesHTML}</div>
+    ${standHTML}
+    <div class="pmr-acts" style="margin-top:.6rem">
+      ${canFinalize?`<button class="pmr-btn res" onclick="finalizeTurfPool(${pool.id})">🏆 ${isEs()?'Finalizar y repartir':'Finalize & distribute'}</button>`:''}
+      <button class="pmr-btn del" onclick="deleteTurfPool(${pool.id})">${isEs()?'Eliminar':'Delete'}</button>
+    </div>`;
+  c.appendChild(div);
+}
 
 /* ═══ VOTE ═══ */
 const selO={};
@@ -711,6 +932,117 @@ function renderPCard(pred,container){
   container.appendChild(div);
 }
 
+/* ═══ TURF (POLLA HÍPICA) — USUARIO ═══ */
+const TURF_TEMP={};
+
+function renderTurfPools(){
+  const c=document.getElementById('turfPools');if(!c)return;
+  c.innerHTML='';
+  const pools=(STATE.turf.pools||[]).filter(p=>p.status==='open'||p.finalized);
+  if(!pools.length){c.innerHTML=`<div class="empty-state" style="padding:1.25rem"><div style="font-size:1.5rem;margin-bottom:.5rem">🏇</div><span class="t t-es">No hay pollas hípicas activas.</span><span class="t t-en">No active horse racing pools.</span></div>`;return;}
+  pools.forEach(pool=>renderTurfPoolCard(pool,c));
+}
+window.renderTurfPools=renderTurfPools;
+
+function turfFinalHTML(pool){
+  const fw=pool.finalWinners;if(!fw)return'';
+  const rows1=fw.tier1.map(k=>turfWinnerRow(pool,k,fw.p1,'🥇')).join('');
+  const rows2=fw.tier2.map(k=>turfWinnerRow(pool,k,fw.p2,'🥈')).join('');
+  const rows3=fw.tier3.map(k=>turfWinnerRow(pool,k,fw.p3,'🥉')).join('');
+  return `<div class="winners-box"><div class="winners-title">🏆 ${isEs()?'Premiación final':'Final prizes'}</div>${rows1}${rows2}${rows3}</div>`;
+}
+function turfWinnerRow(pool,walletKey,prize,medal){
+  if(!prize)return'';
+  const picks=STATE.turf.picks[pool.id]||{};
+  const p=picks[walletKey];
+  const name=p&&p.alias?p.alias:(p?p.wallet.slice(0,8)+'...'+p.wallet.slice(-6):walletKey);
+  return `<div class="winner-row"><div class="wmedal">${medal}</div><div class="waddr">${name}</div><div class="wprize">${prize.toLocaleString()} $OTI</div></div>`;
+}
+
+function turfPicksFormHTML(pool){
+  let races='';
+  for(let i=0;i<pool.racesCount;i++){
+    const n=pool.horsesPerRace[i];
+    let btns='';
+    for(let h=1;h<=n;h++){
+      btns+=`<button type="button" class="horse-btn" onclick="selHorse(${pool.id},${i},${h},this)">${h}</button>`;
+    }
+    races+=`<div class="turf-race-block"><div class="turf-race-title">${isEs()?'Carrera':'Race'} ${i+1}</div><div class="horse-grid" id="hg-${pool.id}-${i}">${btns}</div></div>`;
+  }
+  return `<div class="turf-picks-form" id="tpf-${pool.id}">${races}<button class="pred-sub" id="tpfSub-${pool.id}" onclick="submitTurfPicks(${pool.id})" disabled>${isEs()?'Confirmar mis 7 caballos':'Confirm my 7 horses'}</button></div>`;
+}
+
+function toggleTurfForm(poolId){
+  const w=document.getElementById('tpfWrap-'+poolId);if(!w)return;
+  w.style.display=w.style.display==='none'?'block':'none';
+}
+window.toggleTurfForm=toggleTurfForm;
+
+function selHorse(poolId,raceIdx,horseNum,btn){
+  if(!TURF_TEMP[poolId]){
+    const pool=STATE.turf.pools.find(p=>p.id===poolId);
+    TURF_TEMP[poolId]=Array(pool?pool.racesCount:7).fill(null);
+  }
+  TURF_TEMP[poolId][raceIdx]=horseNum;
+  document.querySelectorAll(`#hg-${poolId}-${raceIdx} .horse-btn`).forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  const allFilled=TURF_TEMP[poolId].every(v=>v!==null);
+  const subBtn=document.getElementById('tpfSub-'+poolId);
+  if(subBtn)subBtn.disabled=!allFilled;
+}
+window.selHorse=selHorse;
+
+async function submitTurfPicks(poolId){
+  const w=mW();
+  if(!w){alert(isEs()?'Primero conecta tu billetera en la pestaña Billetera':'Connect your wallet in the Wallet tab first');return;}
+  const picks=TURF_TEMP[poolId];
+  if(!picks||picks.some(v=>v===null))return;
+  const key=sanitizeKey(w);
+  const obj={wallet:w,alias:mA()||'',picks:[...picks],ts:Date.now()};
+  showLoader(true);
+  await fbSaveTurfPick(poolId,key,obj);
+  showLoader(false);
+  delete TURF_TEMP[poolId];
+  renderAll();
+}
+window.submitTurfPicks=submitTurfPicks;
+
+function renderTurfPoolCard(pool,container){
+  const w=mW();
+  const key=w?sanitizeKey(w):null;
+  const poolPicks=STATE.turf.picks[pool.id]||{};
+  const myPick=key?poolPicks[key]:null;
+  const now=new Date();
+  const dlPassed=pool.dl&&new Date(pool.dl)<now;
+  const canPick=!myPick&&!dlPassed&&!pool.finalized&&pool.status==='open';
+  const dlS=pool.dl?new Date(pool.dl).toLocaleDateString(isEs()?'es-PE':'en-US',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+  const resultsCount=pool.results.filter(r=>r).length;
+
+  let bodyHTML='';
+  if(myPick){
+    const {total}=turfPointsFor(pool,myPick);
+    bodyHTML=`<div class="pred-voted">✓ ${isEs()?'Ya participaste':'You already entered'} · ${isEs()?'Puntos':'Points'}: <b style="color:var(--gold)">${total}</b></div>`;
+  } else if(canPick){
+    bodyHTML=`<button class="pred-sub" style="margin-top:.75rem" onclick="toggleTurfForm(${pool.id})">${isEs()?'Participar →':'Enter →'}</button><div id="tpfWrap-${pool.id}" style="display:none;margin-top:.75rem">${turfPicksFormHTML(pool)}</div>`;
+  } else if(dlPassed&&!myPick&&!pool.finalized){
+    bodyHTML=`<div class="pred-dl" style="margin-top:.5rem">⏰ ${isEs()?'Cierre de participación alcanzado':'Entry deadline reached'}</div>`;
+  }
+
+  const standHTML=turfStandingsHTML(pool);
+  const finalHTML=pool.finalized?turfFinalHTML(pool):'';
+
+  const div=document.createElement('div');div.className='pred-card';
+  div.innerHTML=`<div class="psbar ${pool.finalized?'resolved':'open'}"></div><div class="pred-inner">
+    <div class="pred-meta"><span class="pbadge ${pool.finalized?'resolved':'open'}">🏇 ${pool.hippodrome}</span><span class="pred-reward"><b>${(pool.reward||0).toLocaleString()}</b> $OTI</span></div>
+    <div class="pred-q">${isEs()?'Polla Hípica':'Horse Racing Pool'} · ${resultsCount}/${pool.racesCount} ${isEs()?'carreras registradas':'races recorded'}</div>
+    ${dlS?`<div class="pred-dl">⏰ ${isEs()?(pool.finalized?'Cerrada':'Cierre de participación'):'Entry closes'}: ${dlS}</div>`:''}
+    ${bodyHTML}
+    ${standHTML}
+    ${finalHTML}
+  </div>`;
+  container.appendChild(div);
+}
+
 /* ═══ RENDER ALL ═══ */
 function renderAll(){
   const secCats=STATE.activeSection?SECTION_CATS[STATE.activeSection]:null;
@@ -731,6 +1063,11 @@ function renderAll(){
   const rc=document.getElementById('rPreds');rc.innerHTML='';res.forEach(p=>renderPCard(p,rc));
   document.getElementById('rSection').style.display=res.length?'block':'none';
   document.getElementById('emptyS').style.display=open.length?'none':'block';
+  const tSec=document.getElementById('turfSection');
+  if(tSec){
+    if(STATE.activeSection==='turf'){ tSec.style.display='block'; renderTurfPools(); }
+    else tSec.style.display='none';
+  }
   checkNotif();
 }
 
