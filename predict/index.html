@@ -25,7 +25,21 @@ div.t{display:none !important}
 body.lang-es div.t-es{display:block !important}
 body.lang-en div.t-en{display:block !important}
 .hdr{padding:calc(var(--st)+10px) 1.1rem 10px;background:rgba(10,10,8,.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50}
-.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:var(--gold);letter-spacing:-.02em}.logo span{color:var(--cream)}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:var(--gold);letter-spacing:-.02em;cursor:pointer}.logo span{color:var(--cream)}
+.sec-badge{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-left:8px;padding:2px 8px;border:1px solid rgba(247,201,72,.3);cursor:pointer}
+
+/* ═══ SPLASH ═══ */
+.splash{position:fixed;inset:0;z-index:150;background:var(--dark);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(var(--st)+2rem) 1.5rem calc(var(--sb)+2rem);overflow-y:auto;text-align:center}
+.splash-logo{width:min(78vw,300px);height:auto;margin-bottom:1.5rem;border:1px solid var(--border)}
+.splash-tag{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:1.75rem}
+.splash-social{display:flex;gap:.7rem;margin-bottom:2.25rem}
+.splash-social a{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);color:var(--gold);text-decoration:none;font-size:1.1rem;transition:background .2s,border-color .2s}
+.splash-social a:active,.splash-social a:hover{background:rgba(247,201,72,.1);border-color:var(--gold)}
+.splash-btns{display:flex;flex-direction:column;gap:.7rem;width:100%;max-width:340px}
+.splash-btn{width:100%;background:var(--dark3);border:1px solid var(--border);color:var(--cream);padding:1rem 1.2rem;font-family:'Space Mono',monospace;font-weight:700;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;gap:.75rem;text-align:left;transition:border-color .2s,background .2s}
+.splash-btn:active,.splash-btn:hover{border-color:var(--gold);background:rgba(247,201,72,.06)}
+.splash-btn .sb-icon{font-size:1.25rem}
+.splash-btn .sb-sub{display:block;font-size:.58rem;color:var(--muted);letter-spacing:.05em;text-transform:none;margin-top:2px;font-weight:400}
 .hdr-right{display:flex;align-items:center;gap:7px}
 .lang-sw{display:flex;border:1px solid var(--border)}.lbtn{background:none;border:none;padding:3px 9px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;letter-spacing:.08em}.lbtn.on{background:var(--gold);color:var(--dark)}
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(68px + var(--sb))}.scroll::-webkit-scrollbar{display:none}
@@ -145,7 +159,7 @@ textarea.finput{resize:vertical;min-height:60px}
     <div class="fgroup"><label class="flabel"><span class="t t-es">Fecha límite</span><span class="t t-en">Deadline</span></label><input type="datetime-local" class="finput" id="fd" style="margin-bottom:0"></div>
     <div class="frow" style="margin-bottom:.875rem">
       <div><label class="flabel"><span class="t t-es">Categoría</span><span class="t t-en">Category</span></label>
-        <select class="fselect" id="fc"><option value="btc">💰 BTC</option><option value="project">⚡ OTI</option><option value="market">📈 Mercado</option><option value="solana">🟣 Solana</option><option value="other">🔮 Otro</option></select></div>
+        <select class="fselect" id="fc"><option value="btc">💰 BTC</option><option value="project">⚡ OTI</option><option value="market">📈 Mercado</option><option value="solana">🟣 Solana</option><option value="sport">⚽ Sport</option><option value="turf">🏇 Turf</option><option value="other">🔮 Otro</option></select></div>
       <div><label class="flabel"><span class="t t-es">Método sorteo</span><span class="t t-en">Draw method</span></label>
         <select class="fselect" id="fm"><option value="random"><span class="t t-es">Sorteo aleatorio</span><span class="t t-en">Random draw</span></option><option value="all"><span class="t t-es">Todos los que aciertan</span><span class="t t-en">All correct</span></option><option value="first"><span class="t t-es">Primeros N en votar</span><span class="t t-en">First N voters</span></option></select></div>
     </div>
@@ -160,8 +174,25 @@ textarea.finput{resize:vertical;min-height:60px}
     <div style="height:2rem"></div>
   </div>
 </div>
+<div class="splash" id="splashPg">
+  <img src="oti-splash-logo.png" alt="$OTI - Predictions that create value" class="splash-logo">
+  <div class="splash-tag t t-es">Elige una sección para comenzar</div>
+  <div class="splash-tag t t-en">Choose a section to begin</div>
+  <div class="splash-social">
+    <a href="https://x.com/osatoshi_token" target="_blank" rel="noopener" title="X · Osatoshi Token">🐦</a>
+    <a href="https://x.com/Oshi_Network" target="_blank" rel="noopener" title="X · Oshi Network">🐦</a>
+    <a href="https://discord.gg/tcPXRkHu5" target="_blank" rel="noopener" title="Discord">🎮</a>
+    <a href="https://t.me/oshinetwork" target="_blank" rel="noopener" title="Telegram">✈️</a>
+  </div>
+  <div class="splash-btns">
+    <button class="splash-btn" onclick="enterSection('sport')"><span class="sb-icon">⚽</span><span>OSATOSHI SPORT<span class="sb-sub t t-es">Fútbol, básquet y más</span><span class="sb-sub t t-en">Soccer, basketball & more</span></span></button>
+    <button class="splash-btn" onclick="enterSection('turf')"><span class="sb-icon">🏇</span><span>OSATOSHI TURF<span class="sb-sub t t-es">Carreras de caballos</span><span class="sb-sub t t-en">Horse racing</span></span></button>
+    <button class="splash-btn" onclick="enterSection('crypto')"><span class="sb-icon">₿</span><span>OSATOSHI CRYPTO<span class="sb-sub t t-es">BTC, $OTI, Solana y mercado</span><span class="sb-sub t t-en">BTC, $OTI, Solana & market</span></span></button>
+  </div>
+</div>
+<div id="appRoot" style="display:none">
 <div class="hdr">
-  <div class="logo">OTI<span>Predict</span></div>
+  <div class="logo" onclick="backToSplash()" title="Cambiar sección"><span id="secIcon"></span> OTI<span>Predict</span><span class="sec-badge" id="secBadge" style="display:none"></span></div>
   <div class="hdr-right">
     <div class="lang-sw"><button class="lbtn on" id="bEs" onclick="setLang('es')">ES</button><button class="lbtn" id="bEn" onclick="setLang('en')">EN</button></div>
     <button style="display:none;background:none;border:1px solid rgba(247,201,72,.3);color:var(--gold);padding:3px 9px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-family:'Space Mono',monospace" id="adminBtn" onclick="openP()">Admin</button>
@@ -225,6 +256,7 @@ textarea.finput{resize:vertical;min-height:60px}
   <button class="ni" onclick="goTo('wallet',this)"><span class="ni-icon">👛</span><span class="ni-label"><span class="t t-es">Billetera</span><span class="t t-en">Wallet</span></span></button>
   <button class="ni" onclick="goTo('rank',this)"><span class="ni-icon">🏆</span><span class="ni-label">Ranking</span></button>
 </nav>
+</div>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getDatabase, ref, set, get, onValue, update } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
@@ -247,7 +279,7 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 /* Estado global */
-let STATE = { preds: [], votes: {}, lb: {} };
+let STATE = { preds: [], votes: {}, lb: {}, activeSection: null };
 
 /* ═══ FIREBASE API ═══ */
 
@@ -442,13 +474,37 @@ function checkAdminURL(){
 }
 
 /* ═══ HELPERS ═══ */
-const CI={btc:'💰',project:'⚡',market:'📈',solana:'🟣',other:'🔮'};
+const CI={btc:'💰',project:'⚡',market:'📈',solana:'🟣',other:'🔮',sport:'⚽',turf:'🏇'};
 const MD=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
 function showM(id){const m=document.getElementById(id);if(m){m.style.display='block';setTimeout(()=>m.style.display='none',2500);}}
 function hasVoted(predId){const w=mW();if(!w)return false;return STATE.votes[w]&&STATE.votes[w][predId]!==undefined;}
 function seedH(str){let h=0;for(let i=0;i<str.length;i++){h=(Math.imul(31,h)+str.charCodeAt(i))|0;}return Math.abs(h);}
 function drawW(wallets,count,seed){if(!wallets.length)return[];const sh=[...wallets];let s=seedH(seed+wallets.join('|'));for(let i=sh.length-1;i>0;i--){s=(s*1664525+1013904223)&0xffffffff;const j=Math.abs(s)%(i+1);[sh[i],sh[j]]=[sh[j],sh[i]];}return sh.slice(0,Math.min(count,sh.length));}
 function gSeed(pred){return pred.id+'|'+pred.dl+'|'+pred.winner;}
+
+/* ═══ SECCIONES (SPORT / TURF / CRYPTO) ═══ */
+const SECTION_CATS={sport:['sport'],turf:['turf'],crypto:['btc','project','market','solana','other']};
+const SECTION_ICON={sport:'⚽',turf:'🏇',crypto:'₿'};
+const SECTION_LABEL={sport:{es:'Sport',en:'Sport'},turf:{es:'Turf',en:'Turf'},crypto:{es:'Crypto',en:'Crypto'}};
+
+function enterSection(sec){
+  STATE.activeSection=sec;
+  document.getElementById('splashPg').style.display='none';
+  document.getElementById('appRoot').style.display='block';
+  document.getElementById('secIcon').textContent=SECTION_ICON[sec]||'';
+  const badge=document.getElementById('secBadge');
+  badge.style.display='inline-block';
+  badge.textContent=(isEs()?SECTION_LABEL[sec].es:SECTION_LABEL[sec].en);
+  renderAll();
+}
+window.enterSection=enterSection;
+
+function backToSplash(){
+  STATE.activeSection=null;
+  document.getElementById('appRoot').style.display='none';
+  document.getElementById('splashPg').style.display='flex';
+}
+window.backToSplash=backToSplash;
 
 /* ═══ NAVIGATION ═══ */
 function goTo(p,btn){
@@ -622,13 +678,20 @@ function renderPCard(pred,container){
 
 /* ═══ RENDER ALL ═══ */
 function renderAll(){
-  const open=STATE.preds.filter(p=>p.status==='open');
-  const res=STATE.preds.filter(p=>p.status==='resolved').slice(0,5);
+  const secCats=STATE.activeSection?SECTION_CATS[STATE.activeSection]:null;
+  const base=secCats?STATE.preds.filter(p=>secCats.includes(p.cat)):STATE.preds;
+  const open=base.filter(p=>p.status==='open');
+  const res=base.filter(p=>p.status==='resolved').slice(0,5);
   const totalOTI=open.reduce((a,p)=>a+(p.reward||0),0);
   document.getElementById('sOpen').textContent=open.length;
   document.getElementById('sOti').textContent=totalOTI.toLocaleString();
-  document.getElementById('sUsers').textContent=Object.keys(STATE.votes).length;
-  document.getElementById('sRes').textContent=STATE.preds.filter(p=>p.status==='resolved').length;
+  if(secCats){
+    const secIds=new Set(base.map(p=>p.id));
+    document.getElementById('sUsers').textContent=Object.keys(STATE.votes).filter(w=>Object.keys(STATE.votes[w]).some(pid=>secIds.has(Number(pid)))).length;
+  } else {
+    document.getElementById('sUsers').textContent=Object.keys(STATE.votes).length;
+  }
+  document.getElementById('sRes').textContent=base.filter(p=>p.status==='resolved').length;
   const oc=document.getElementById('oPreds');oc.innerHTML='';open.forEach(p=>renderPCard(p,oc));
   const rc=document.getElementById('rPreds');rc.innerHTML='';res.forEach(p=>renderPCard(p,rc));
   document.getElementById('rSection').style.display=res.length?'block':'none';
