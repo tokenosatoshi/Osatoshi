@@ -485,6 +485,17 @@ function parseTurfData(turfRaw) {
   STATE.turf.pools = turfRaw.pools
     ? Object.values(turfRaw.pools).filter(p => p && p.id).sort((a,b) => b.id - a.id)
     : [];
+  /* Firebase omite objetos/arrays vacíos y valores null al guardarlos —
+     normalizamos aquí para que el render nunca reciba 'results' indefinido */
+  STATE.turf.pools.forEach(p => {
+    p.results = p.results || {};
+    p.horsesPerRace = p.horsesPerRace || Array(p.racesCount || 7).fill(14);
+    if(p.finalWinners){
+      p.finalWinners.tier1 = p.finalWinners.tier1 || [];
+      p.finalWinners.tier2 = p.finalWinners.tier2 || [];
+      p.finalWinners.tier3 = p.finalWinners.tier3 || [];
+    }
+  });
   STATE.turf.picks = turfRaw.picks || {};
 }
 
@@ -722,7 +733,7 @@ async function createTurfPool(){
   const pool={
     id:Date.now(),hippodrome:hip,reward,dl,racesCount:7,
     horsesPerRace:Array(7).fill(horses),
-    results:Array(7).fill(null),
+    results:{},
     status:'open',finalized:false,finalWinners:null
   };
   showLoader(true);
@@ -757,7 +768,7 @@ window.editTurfRace=editTurfRace;
 
 async function finalizeTurfPool(poolId){
   const pool=STATE.turf.pools.find(p=>p.id===poolId);if(!pool)return;
-  if(pool.results.filter(r=>r).length<pool.racesCount){alert(isEs()?'Faltan resultados de carreras por registrar':'Some race results are still missing');return;}
+  if(Object.values(pool.results).filter(Boolean).length<pool.racesCount){alert(isEs()?'Faltan resultados de carreras por registrar':'Some race results are still missing');return;}
   const picks=STATE.turf.picks[poolId]||{};
   if(!Object.keys(picks).length){alert(isEs()?'Esta polla no tiene participantes':'This pool has no participants');return;}
   if(!confirm(isEs()?'¿Finalizar esta polla y repartir los premios? Esta acción no se puede deshacer.':'Finalize this pool and distribute prizes? This cannot be undone.'))return;
@@ -840,7 +851,7 @@ function renderATurfCard(pool,c){
       racesHTML+=`<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div style="font-size:.62rem;color:var(--cream);margin-bottom:4px">${isEs()?'Carrera':'Race'} ${i+1}</div><div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap"><select class="pmr-sel" id="r1-${pool.id}-${i}"><option value="">🥇 1°</option>${opts}</select><select class="pmr-sel" id="r2-${pool.id}-${i}"><option value="">🥈 2°</option>${opts}</select><select class="pmr-sel" id="r3-${pool.id}-${i}"><option value="">🥉 3°</option>${opts}</select><button class="pmr-btn res" onclick="saveTurfRace(${pool.id},${i})">${isEs()?'Guardar':'Save'}</button></div></div>`;
     }
   }
-  const doneCount=pool.results.filter(r=>r).length;
+  const doneCount=Object.values(pool.results).filter(Boolean).length;
   const canFinalize=doneCount===pool.racesCount&&!pool.finalized;
   const standHTML=turfStandingsHTML(pool);
   div.innerHTML=`<div class="pmr-q">🏇 ${pool.hippodrome} <span style="color:var(--muted);font-weight:400">· ${(pool.reward||0).toLocaleString()} $OTI · ${participantCount} ${isEs()?'participantes':'participants'}</span></div>
@@ -940,15 +951,17 @@ function renderTurfPools(){
   c.innerHTML='';
   const pools=(STATE.turf.pools||[]).filter(p=>p.status==='open'||p.finalized);
   if(!pools.length){c.innerHTML=`<div class="empty-state" style="padding:1.25rem"><div style="font-size:1.5rem;margin-bottom:.5rem">🏇</div><span class="t t-es">No hay pollas hípicas activas.</span><span class="t t-en">No active horse racing pools.</span></div>`;return;}
-  pools.forEach(pool=>renderTurfPoolCard(pool,c));
+  pools.forEach(pool=>{
+    try{ renderTurfPoolCard(pool,c); }catch(e){ console.error('renderTurfPools error en pool',pool&&pool.id,e); }
+  });
 }
 window.renderTurfPools=renderTurfPools;
 
 function turfFinalHTML(pool){
   const fw=pool.finalWinners;if(!fw)return'';
-  const rows1=fw.tier1.map(k=>turfWinnerRow(pool,k,fw.p1,'🥇')).join('');
-  const rows2=fw.tier2.map(k=>turfWinnerRow(pool,k,fw.p2,'🥈')).join('');
-  const rows3=fw.tier3.map(k=>turfWinnerRow(pool,k,fw.p3,'🥉')).join('');
+  const rows1=(fw.tier1||[]).map(k=>turfWinnerRow(pool,k,fw.p1,'🥇')).join('');
+  const rows2=(fw.tier2||[]).map(k=>turfWinnerRow(pool,k,fw.p2,'🥈')).join('');
+  const rows3=(fw.tier3||[]).map(k=>turfWinnerRow(pool,k,fw.p3,'🥉')).join('');
   return `<div class="winners-box"><div class="winners-title">🏆 ${isEs()?'Premiación final':'Final prizes'}</div>${rows1}${rows2}${rows3}</div>`;
 }
 function turfWinnerRow(pool,walletKey,prize,medal){
@@ -1016,7 +1029,7 @@ function renderTurfPoolCard(pool,container){
   const dlPassed=pool.dl&&new Date(pool.dl)<now;
   const canPick=!myPick&&!dlPassed&&!pool.finalized&&pool.status==='open';
   const dlS=pool.dl?new Date(pool.dl).toLocaleDateString(isEs()?'es-PE':'en-US',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
-  const resultsCount=pool.results.filter(r=>r).length;
+  const resultsCount=Object.values(pool.results).filter(Boolean).length;
 
   let bodyHTML='';
   if(myPick){
