@@ -43,6 +43,7 @@ body.lang-en div.t-en{display:block !important}
 .hdr-right{display:flex;align-items:center;gap:7px}
 .lang-sw{display:flex;border:1px solid var(--border)}.lbtn{background:none;border:none;padding:3px 9px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;letter-spacing:.08em}.lbtn.on{background:var(--gold);color:var(--dark)}
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(68px + var(--sb))}.scroll::-webkit-scrollbar{display:none}
+#appRoot{display:none;flex-direction:column;flex:1;min-height:0;width:100%}
 .pg{display:none;padding:1.1rem;animation:fu .25s ease}.pg.on{display:block}
 @keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(10,10,8,.97);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding-bottom:var(--sb);z-index:50}
@@ -240,7 +241,7 @@ textarea.finput{resize:vertical;min-height:60px}
   </div>
   <button class="rules-link" style="margin-top:1.5rem;margin-bottom:0" onclick="openRules()">📜 <span class="t t-es">Ver reglamento de participación</span><span class="t t-en">View participation rules</span></button>
 </div>
-<div id="appRoot" style="display:none">
+<div id="appRoot">
 <div class="hdr">
   <div class="logo" onclick="backToSplash()" title="Cambiar sección"><span id="secIcon"></span> OTI<span>Predict</span><span class="sec-badge" id="secBadge" style="display:none"></span></div>
   <div class="hdr-right">
@@ -598,7 +599,7 @@ const SECTION_LABEL={sport:{es:'Sport',en:'Sport'},turf:{es:'Turf',en:'Turf'},cr
 function enterSection(sec){
   STATE.activeSection=sec;
   document.getElementById('splashPg').style.display='none';
-  document.getElementById('appRoot').style.display='block';
+  document.getElementById('appRoot').style.display='flex';
   document.getElementById('secIcon').textContent=SECTION_ICON[sec]||'';
   const badge=document.getElementById('secBadge');
   badge.style.display='inline-block';
